@@ -44,7 +44,7 @@ android {
     androidResources { noCompress += "traineddata" }
     buildTypes {
         release {
-            signingConfig = if (ksFile != null) signingConfigs.getByName("release") else null
+            signingConfig = signingConfigs.findByName("release")?.takeIf { ksFile != null }
             isMinifyEnabled = true
             isShrinkResources = true
             ndk { debugSymbolLevel = "SYMBOL_TABLE" }
