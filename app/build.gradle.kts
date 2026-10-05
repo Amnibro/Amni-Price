@@ -1,3 +1,4 @@
+import java.util.Properties
 plugins {
     alias(libs.plugins.android.application)
     alias(libs.plugins.kotlin.android)
@@ -6,6 +7,8 @@ plugins {
     alias(libs.plugins.roborazzi)
 }
 
+val ksFile = listOfNotNull(System.getenv("AMNI_PRICE_SIGNING"), rootProject.file("keystore.properties").path, "${System.getProperty("user.home")}/.config/amni/signing/android/amni-price.properties").map(::File).firstOrNull { it.exists() }
+val ksProp = Properties().apply { ksFile?.inputStream()?.use { load(it) } }
 android {
     namespace = "com.amniscient.price"
     compileSdk = 35
@@ -24,8 +27,17 @@ android {
         buildConfigField("String", "MAP_ATTRIBUTION", "\"$attribution\"")
     }
 
+    signingConfigs {
+        create("release") {
+            storeFile = ksProp.getProperty("storeFile")?.let { file(it) }
+            storePassword = ksProp.getProperty("storePassword", "")
+            keyAlias = ksProp.getProperty("keyAlias", "")
+            keyPassword = ksProp.getProperty("keyPassword", "")
+        }
+    }
     buildTypes {
         release {
+            signingConfig = if (ksFile != null) signingConfigs.getByName("release") else null
             isMinifyEnabled = true
             isShrinkResources = true
             proguardFiles(getDefaultProguardFile("proguard-android-optimize.txt"), "proguard-rules.pro")

@@ -100,8 +100,8 @@ amni.mapAttribution=© MapTiler © OpenStreetMap contributors
 Tiles are recolored in-app to match the theme (`map/MapTiles.kt`), so any standard style works.
 
 Debug builds have **Settings → Load sample data** (seven stores in three towns, eight weeks of prices) for
-trying every feature without going shopping. CI (`.github/workflows/android.yml`) runs tests and
-lint and uploads the debug APK on every push.
+trying every feature without going shopping. Before sending a change, run
+`./gradlew :app:testDebugUnitTest :app:lintDebug` locally.
 
 ## Project layout
 
@@ -150,6 +150,13 @@ app/src/main/java/com/amniscient/price/
 - Price-drop alerts for items on your list
 - Online listings via the share sheet
 
+## Contributing
+
+Contributions are welcome: better price and receipt parsing, store receipt quirks, translations,
+an open-source OCR backend, and the roadmap items above. Open an issue to discuss bigger changes,
+then send a pull request with tests for anything in `domain/`. The "Extending it" table shows where
+each kind of change goes.
+
 ## License
 
-MIT. Fonts and libraries: see `THIRD_PARTY_NOTICES.md`.
+GPL-3.0-or-later. See `LICENSE`. Fonts and libraries: see `THIRD_PARTY_NOTICES.md`.
