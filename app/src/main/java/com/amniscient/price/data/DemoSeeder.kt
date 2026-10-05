@@ -14,26 +14,26 @@ object DemoSeeder {
     private data class DemoStore(val chain: String, val branch: String, val position: LatLng, val region: String, val factor: Double)
 
     private val stores = listOf(
-        DemoStore("Aldi", "Oak Ave", LatLng(39.9790, -82.9650), "Columbus", 1.00),
-        DemoStore("Kroger", "Main St", LatLng(39.9560, -82.9900), "Columbus", 1.00),
-        DemoStore("Whole Foods", "Downtown", LatLng(39.9700, -83.0030), "Columbus", 1.00),
-        DemoStore("Target", "Riverside", LatLng(40.0990, -83.1140), "Dublin", 1.07),
-        DemoStore("Kroger", "Sawmill", LatLng(40.0880, -83.0900), "Dublin", 1.09),
-        DemoStore("Aldi", "State St", LatLng(40.1260, -82.9290), "Westerville", 0.96),
-        DemoStore("Kroger", "Polaris", LatLng(40.1450, -82.9800), "Westerville", 0.97),
+        DemoStore("ThriftCo", "Oak Ave", LatLng(39.9790, -82.9650), "Columbus", 1.00),
+        DemoStore("Hometown Grocers", "Main St", LatLng(39.9560, -82.9900), "Columbus", 1.00),
+        DemoStore("Green Basket", "Downtown", LatLng(39.9700, -83.0030), "Columbus", 1.00),
+        DemoStore("BigBox Mart", "Riverside", LatLng(40.0990, -83.1140), "Dublin", 1.07),
+        DemoStore("Hometown Grocers", "Sawmill", LatLng(40.0880, -83.0900), "Dublin", 1.09),
+        DemoStore("ThriftCo", "State St", LatLng(40.1260, -82.9290), "Westerville", 0.96),
+        DemoStore("Hometown Grocers", "Polaris", LatLng(40.1450, -82.9800), "Westerville", 0.97),
     )
 
     private val items = listOf(
-        Item("Great Value Whole Milk", "1 gal", "078742351865", mapOf("Aldi" to 329, "Kroger" to 389, "Target" to 399, "Whole Foods" to 549)),
-        Item("Large Eggs 12 ct", "12 ct", "011110038364", mapOf("Aldi" to 279, "Kroger" to 349, "Target" to 369, "Whole Foods" to 499)),
-        Item("Bananas", "1 lb", null, mapOf("Aldi" to 49, "Kroger" to 59, "Target" to 65, "Whole Foods" to 79)),
-        Item("Jif Creamy Peanut Butter", "16 oz", "051500255162", mapOf("Aldi" to 279, "Kroger" to 299, "Target" to 319)),
-        Item("Barilla Spaghetti", "16 oz", "076808280739", mapOf("Aldi" to 149, "Kroger" to 179, "Target" to 189, "Whole Foods" to 229)),
-        Item("Chicken Breast", "1 lb", null, mapOf("Aldi" to 299, "Kroger" to 349, "Whole Foods" to 699)),
-        Item("Tide Pods 42 ct", "42 ct", "037000930389", mapOf("Kroger" to 1399, "Target" to 1299)),
-        Item("Whole Wheat Bread", "20 oz", "072250037129", mapOf("Aldi" to 189, "Kroger" to 249, "Target" to 279, "Whole Foods" to 449)),
-        Item("Coca-Cola 12 pack", "12 pack", "049000028911", mapOf("Kroger" to 749, "Target" to 699, "Aldi" to 649)),
-        Item("Haas Avocados", "4 ct", null, mapOf("Aldi" to 349, "Kroger" to 399, "Whole Foods" to 499)),
+        Item("Whole Milk", "1 gal", "240000000137", mapOf("ThriftCo" to 329, "Hometown Grocers" to 389, "BigBox Mart" to 399, "Green Basket" to 549)),
+        Item("Large Eggs 12 ct", "12 ct", "240000000274", mapOf("ThriftCo" to 279, "Hometown Grocers" to 349, "BigBox Mart" to 369, "Green Basket" to 499)),
+        Item("Bananas", "1 lb", null, mapOf("ThriftCo" to 49, "Hometown Grocers" to 59, "BigBox Mart" to 65, "Green Basket" to 79)),
+        Item("Creamy Peanut Butter", "16 oz", "240000000411", mapOf("ThriftCo" to 279, "Hometown Grocers" to 299, "BigBox Mart" to 319)),
+        Item("Spaghetti", "16 oz", "240000000548", mapOf("ThriftCo" to 149, "Hometown Grocers" to 179, "BigBox Mart" to 189, "Green Basket" to 229)),
+        Item("Chicken Breast", "1 lb", null, mapOf("ThriftCo" to 299, "Hometown Grocers" to 349, "Green Basket" to 699)),
+        Item("Laundry Pods 42 ct", "42 ct", "240000000685", mapOf("Hometown Grocers" to 1399, "BigBox Mart" to 1299)),
+        Item("Whole Wheat Bread", "20 oz", "240000000822", mapOf("ThriftCo" to 189, "Hometown Grocers" to 249, "BigBox Mart" to 279, "Green Basket" to 449)),
+        Item("Cola 12 pack", "12 pack", "240000000959", mapOf("Hometown Grocers" to 749, "BigBox Mart" to 699, "ThriftCo" to 649)),
+        Item("Hass Avocados", "4 ct", null, mapOf("ThriftCo" to 349, "Hometown Grocers" to 399, "Green Basket" to 499)),
     )
 
     suspend fun seed(repository: PriceRepository, now: Long = System.currentTimeMillis()) {
@@ -63,7 +63,7 @@ object DemoSeeder {
             }
         }
         repository.recordAll(inputs)
-        listOf("Great Value Whole Milk", "Large Eggs 12 ct", "Bananas", "Tide Pods 42 ct", "Barilla Spaghetti", "Coffee filters")
+        listOf("Whole Milk", "Large Eggs 12 ct", "Bananas", "Laundry Pods 42 ct", "Spaghetti", "Coffee filters")
             .forEach { repository.addToList(it) }
     }
 }

@@ -57,7 +57,7 @@ class ScreenshotTest {
     @Before fun seed() = runBlocking {
         DemoSeeder.seed(container.repository)
         container.settings.setOnboarded()
-        val aldi = container.repository.allStores.first().first { it.name == "Kroger" }
+        val aldi = container.repository.allStores.first().first { it.name == "Hometown Grocers" }
         container.settings.setCurrentStore(aldi.id)
     }
 
@@ -123,7 +123,7 @@ class ScreenshotTest {
 
     @Test fun shelfReview() = shoot("10_shelf_review") {
         container.scanSession.pendingShelf = ShelfDraft(
-            productName = "Great Value Whole Milk", barcode = "078742351865", priceCents = 419, sizeText = "1 gal", fromScan = true,
+            productName = "Whole Milk", barcode = "240000000137", priceCents = 419, sizeText = "1 gal", fromScan = true,
         )
         ShelfReviewScreen(onDone = noop)
     }
@@ -131,9 +131,9 @@ class ScreenshotTest {
     @Test fun receiptReview() = shoot("11_receipt_review") {
         container.scanSession.pendingReceipt = ReceiptParser.parse(
             listOf(
-                "KROGER", "Main St", "10/03/26 14:22",
-                "GV WHL MLK 078742351865 F  3.99", "LG EGGS 12CT  3.49", "BANANAS  0.59",
-                "2 @ 1.79", "BARILLA SPAGHETTI  3.58", "COUPON  0.50-", "TOTAL  11.15",
+                "HOMETOWN GROCERS", "Main St", "10/03/26 14:22",
+                "WHL MILK 240000000137 F  3.99", "LG EGGS 12CT  3.49", "BANANAS  0.59",
+                "2 @ 1.79", "SPAGHETTI 16OZ  3.58", "COUPON  0.50-", "TOTAL  11.15",
             ),
         )
         ReceiptReviewScreen(onDone = noop)
