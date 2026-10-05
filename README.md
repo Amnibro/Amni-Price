@@ -8,6 +8,18 @@ Retailers use algorithms and AI to set prices by store, by day and by shopper. A
 the consumer's side of that shelf: a fast, private record of what things *actually* cost, so
 you can see which business really has the most affordable goods.
 
+## Get it
+
+| Where | How |
+| --- | --- |
+| **GitHub Releases** | Download the signed APK from the [latest release](https://github.com/Amnibro/Amni-Price/releases/latest). |
+| **Obtainium** | [Add to Obtainium](https://apps.obtainium.imranr.dev/redirect?r=obtainium://add/https://github.com/Amnibro/Amni-Price) or add `https://github.com/Amnibro/Amni-Price` by hand to get updates straight from GitHub releases. |
+| **Google Play (closed beta)** | Testers join at [play.google.com/apps/testing/com.amniscient.price](https://play.google.com/apps/testing/com.amniscient.price). Not on the list yet? Email [amnibro7@gmail.com](mailto:amnibro7@gmail.com?subject=Amni-Price%20beta) with the subject "Amni-Price beta" and the Google account you use for Play. |
+| **F-Droid** | Planned. It needs an open-source OCR build first ([help wanted](https://github.com/Amnibro/Amni-Price/issues)). |
+
+The Play and GitHub builds are signed with different keys (Google re-signs Play installs), so stick
+with one source or uninstall before switching.
+
 <p>
   <img src="app/screenshots/02_home.png" width="23%" />
   <img src="app/screenshots/06_product_detail.png" width="23%" />
