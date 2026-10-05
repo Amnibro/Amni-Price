@@ -8,9 +8,7 @@ import android.view.HapticFeedbackConstants
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.PickVisualMediaRequest
 import androidx.activity.result.contract.ActivityResultContracts
-import androidx.annotation.OptIn
 import androidx.camera.core.Camera
-import androidx.camera.core.ExperimentalGetImage
 import androidx.camera.core.ImageCapture
 import androidx.camera.core.ImageCaptureException
 import androidx.camera.core.ImageProxy
@@ -93,7 +91,6 @@ import com.amniscient.price.ui.components.TrendBadge
 import com.amniscient.price.ui.components.appViewModel
 import com.amniscient.price.ui.theme.Amni
 import com.amniscient.price.ui.theme.AmniText
-import com.google.mlkit.vision.common.InputImage
 import kotlinx.coroutines.delay
 import kotlin.math.roundToInt
 
@@ -125,8 +122,7 @@ fun ScanScreen(
 
     val pickImage = rememberLauncherForActivityResult(ActivityResultContracts.PickVisualMedia()) { uri ->
         if (uri != null) {
-            runCatching { InputImage.fromFilePath(context, uri) }
-                .onSuccess { vm.processReceipt(it, onReady = onReceiptCaptured) }
+            vm.processReceipt({ it.readText(uri) }, onReady = onReceiptCaptured)
         }
     }
 
@@ -300,19 +296,12 @@ fun ScanScreen(
     }
 }
 
-@OptIn(ExperimentalGetImage::class)
 private fun takeReceiptPhoto(context: Context, imageCapture: ImageCapture, vm: ScanViewModel, onReady: () -> Unit) {
     imageCapture.takePicture(
         ContextCompat.getMainExecutor(context),
         object : ImageCapture.OnImageCapturedCallback() {
             override fun onCaptureSuccess(image: ImageProxy) {
-                val media = image.image
-                if (media == null) {
-                    image.close()
-                    return
-                }
-                val input = InputImage.fromMediaImage(media, image.imageInfo.rotationDegrees)
-                vm.processReceipt(input, onReady = onReady, onFinally = { image.close() })
+                vm.processReceipt({ it.readText(image) }, onReady = onReady, onFinally = { image.close() })
             }
 
             override fun onError(exception: ImageCaptureException) = Unit

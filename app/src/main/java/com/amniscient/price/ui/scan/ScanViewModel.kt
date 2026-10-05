@@ -1,12 +1,11 @@
 package com.amniscient.price.ui.scan
 
 import android.os.SystemClock
-import androidx.annotation.OptIn
-import androidx.camera.core.ExperimentalGetImage
 import androidx.camera.core.ImageAnalysis
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.amniscient.price.data.LocationService
+import com.amniscient.price.domain.OcrLine
 import com.amniscient.price.data.PriceEntity
 import com.amniscient.price.data.PriceInput
 import com.amniscient.price.data.PriceRepository
@@ -23,7 +22,6 @@ import com.amniscient.price.scan.ScanSession
 import com.amniscient.price.scan.ShelfDraft
 import com.amniscient.price.scan.VisionEngine
 import com.amniscient.price.scan.VisionResult
-import com.google.mlkit.vision.common.InputImage
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
@@ -70,21 +68,18 @@ class ScanViewModel(
     @Volatile private var lastFrameAt = 0L
 
     /** Live analysis of camera frames in shelf mode, throttled so the UI stays smooth. */
-    @OptIn(ExperimentalGetImage::class)
     val analyzer = ImageAnalysis.Analyzer { proxy ->
-        val media = proxy.image
         val now = SystemClock.elapsedRealtime()
-        if (media == null || _state.value.mode != ScanMode.SHELF || now - lastFrameAt < FRAME_INTERVAL_MS ||
+        if (_state.value.mode != ScanMode.SHELF || now - lastFrameAt < FRAME_INTERVAL_MS ||
             !busy.compareAndSet(false, true)
         ) {
             proxy.close()
             return@Analyzer
         }
         lastFrameAt = now
-        val input = InputImage.fromMediaImage(media, proxy.imageInfo.rotationDegrees)
         viewModelScope.launch {
             try {
-                onFrame(vision.analyze(input))
+                onFrame(vision.analyze(proxy))
             } catch (_: Exception) {
                 // A dropped frame is fine; the next one will be analyzed.
             } finally {
@@ -222,11 +217,11 @@ class ScanViewModel(
     }
 
     /** Full OCR on a still photo of a receipt (from the camera or the gallery). */
-    fun processReceipt(image: InputImage, onReady: () -> Unit, onFinally: () -> Unit = {}) {
+    fun processReceipt(read: suspend (VisionEngine) -> List<OcrLine>, onReady: () -> Unit, onFinally: () -> Unit = {}) {
         _state.update { it.copy(processing = true, message = null) }
         viewModelScope.launch {
             try {
-                val rows = RowGrouper.group(vision.readText(image))
+                val rows = RowGrouper.group(read(vision))
                 val receipt = ReceiptParser.parse(rows)
                 if (receipt.items.isEmpty()) {
                     _state.update { it.copy(message = "No items found. Flatten the receipt and try again in good light.") }

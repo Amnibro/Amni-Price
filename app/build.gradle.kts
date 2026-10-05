@@ -12,13 +12,14 @@ val ksProp = Properties().apply { ksFile?.inputStream()?.use { load(it) } }
 android {
     namespace = "com.amniscient.price"
     compileSdk = 36
+    ndkVersion = "27.2.12479018"
 
     defaultConfig {
         applicationId = "com.amniscient.price"
         minSdk = 26
         targetSdk = 36
-        versionCode = 4
-        versionName = "0.3.1"
+        versionCode = 5
+        versionName = "0.4.0"
 
         // Map tiles: override in gradle.properties / local.properties with your provider before publishing.
         val tileUrl = (project.findProperty("amni.mapTileUrl") as String?) ?: "https://tile.openstreetmap.org/{z}/{x}/{y}.png"
@@ -35,6 +36,12 @@ android {
             keyPassword = ksProp.getProperty("keyPassword", "")
         }
     }
+    flavorDimensions += "distribution"
+    productFlavors {
+        create("play") { dimension = "distribution" }
+        create("fdroid") { dimension = "distribution"; missingDimensionStrategy("parallelization", "standard") }
+    }
+    androidResources { noCompress += "traineddata" }
     buildTypes {
         release {
             signingConfig = if (ksFile != null) signingConfigs.getByName("release") else null
@@ -98,10 +105,12 @@ dependencies {
     implementation(libs.androidx.camera.lifecycle)
     implementation(libs.androidx.camera.view)
 
-    // On-device ML Kit models (bundled: works offline, no Play Services download).
-    implementation(libs.mlkit.text.recognition)
-    implementation(libs.mlkit.barcode.scanning)
-    implementation(libs.kotlinx.coroutines.play.services)
+    "playImplementation"(libs.mlkit.text.recognition)
+    "playImplementation"(libs.mlkit.barcode.scanning)
+    "playImplementation"(libs.kotlinx.coroutines.play.services)
+    "fdroidImplementation"(project(":tesseract4android"))
+    "fdroidImplementation"(libs.zxing.core)
+    "fdroidImplementation"(libs.androidx.exifinterface)
 
     // Price map (OpenStreetMap-based, no API key or Play Services needed).
     implementation(libs.osmdroid)

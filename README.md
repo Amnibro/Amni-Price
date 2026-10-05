@@ -15,9 +15,10 @@ you can see which business really has the most affordable goods.
 | **GitHub Releases** | Download the signed APK from the [latest release](https://github.com/Amnibro/Amni-Price/releases/latest). |
 | **Obtainium** | [Add to Obtainium](https://apps.obtainium.imranr.dev/redirect?r=obtainium://add/https://github.com/Amnibro/Amni-Price) or add `https://github.com/Amnibro/Amni-Price` by hand to get updates straight from GitHub releases. |
 | **Google Play (closed beta)** | Testers join at [play.google.com/apps/testing/com.amniscient.price](https://play.google.com/apps/testing/com.amniscient.price). Not on the list yet? Email [amnibro7@gmail.com](mailto:amnibro7@gmail.com?subject=Amni-Price%20beta) with the subject "Amni-Price beta" and the Google account you use for Play. |
-| **F-Droid** | Planned. It needs an open-source OCR build first ([help wanted](https://github.com/Amnibro/Amni-Price/issues)). |
+| **F-Droid** | Submitted to the main F-Droid repo; it appears in the F-Droid app once accepted. Until then the `-foss` APK on the [latest release](https://github.com/Amnibro/Amni-Price/releases/latest) is the same fully open-source build. |
 
-The Play and GitHub builds are signed with different keys (Google re-signs Play installs), so stick
+Two builds exist: `play` (Google ML Kit OCR) and `fdroid` (Tesseract + ZXing, no Google code, also the `-foss` APK).
+The Play, GitHub and F-Droid builds are signed with different keys (Google re-signs Play installs), so stick
 with one source or uninstall before switching.
 
 <p>
@@ -30,7 +31,7 @@ with one source or uninstall before switching.
 ## Features
 
 **Scan**
-- **Live shelf-tag reading.** CameraX and ML Kit read price, name, size and barcode in real
+- **Live shelf-tag reading.** CameraX plus on-device OCR read price, name, size and barcode in real
   time. Multi-buys ("2 for $5") become per-item prices, unit-price lines are ignored, sale tags
   are flagged. Tap to focus, pinch to zoom, flashlight, and a haptic tick on each detection.
 - **One-tap save.** Choose the store you're in once, then save each item with one tap. A
@@ -87,13 +88,15 @@ See `ui/theme/`.
 
 ## Build
 
-Requirements: JDK 17+ and the Android SDK (platform 35). Android Studio works out of the box.
+Requirements: JDK 17+, the Android SDK (platform 36) and, for the `fdroid` flavor, NDK 27.2.12479018.
+Clone with `git clone --recursive` so the Tesseract submodule is present.
 
 ```bash
-./gradlew :app:testDebugUnitTest    # unit + screenshot tests
-./gradlew :app:assembleDebug        # app/build/outputs/apk/debug/app-debug.apk
-./gradlew :app:installDebug         # install on a connected device
-./gradlew :app:recordRoborazziDebug # regenerate app/screenshots/ after UI changes
+./gradlew :app:testPlayDebugUnitTest     # unit + screenshot tests
+./gradlew :app:assemblePlayDebug         # ML Kit build
+./gradlew :app:assembleFdroidDebug       # fully open-source build (Tesseract + ZXing)
+./gradlew :app:installFdroidDebug        # install on a connected device
+./gradlew :app:recordRoborazziPlayDebug  # regenerate app/screenshots/ after UI changes
 ```
 
 ### Map tiles (before publishing)
@@ -113,7 +116,9 @@ Tiles are recolored in-app to match the theme (`map/MapTiles.kt`), so any standa
 
 Debug builds have **Settings → Load sample data** (seven stores in three towns, eight weeks of prices) for
 trying every feature without going shopping. Before sending a change, run
-`./gradlew :app:testDebugUnitTest :app:lintDebug` locally.
+`./gradlew :app:testPlayDebugUnitTest :app:lintPlayDebug :app:lintFdroidDebug` locally. Clone with
+`git clone --recursive` (or run `git submodule update --init`): the `fdroid` build compiles Tesseract
+from the submodule and needs NDK 27.2.12479018.
 
 ## Project layout
 
@@ -133,7 +138,7 @@ app/src/main/java/com/amniscient/price/
 │   └── TripPlanner      cheapest single store / multi-store split for a list
 ├── data/        Room (stores, products, prices, shopping list), repository, settings, location, demo data
 ├── map/         Map tile source + brand color filter
-├── scan/        ML Kit wrapper (VisionEngine) and the scan → review hand-off
+├── scan/        Scan → review hand-off; VisionEngine lives per flavor (src/play: ML Kit, src/fdroid: Tesseract + ZXing)
 └── ui/          Compose screens: home, scan, review, compare, map, stores, list, settings, onboarding
     ├── theme/       Amniscient colors, type, shapes
     └── components/  Panel, AmniTopBar, PriceText, TrendBadge, pickers…
@@ -148,7 +153,7 @@ app/src/main/java/com/amniscient/price/
 | Better abbreviation matching | `domain/ProductMatcher.kt` + `ProductMatcherTest` |
 | Add a category keyword | the lists in `domain/Category.kt` |
 | Add a unit ("dozen") | `UnitParser` regex + `factor()` |
-| Swap the OCR engine | implement `analyze`/`readText` like `scan/VisionEngine.kt`; everything downstream uses `OcrLine` |
+| Improve the open-source OCR | `app/src/fdroid/.../scan/VisionEngine.kt` (Tesseract page modes, preprocessing); everything downstream uses `OcrLine` |
 | Add a screen | composable + ViewModel in `ui/`, route in `ui/AmniPriceRoot.kt`, dependencies via `appViewModel { … }`, a shot in `ScreenshotTest` |
 | Add a database field | `data/Entities.kt`, bump `AppDatabase.version`, add a `Migration`, extend `MigrationTest` |
 | Change how areas are grouped | `domain/RegionalPrices.regionKey` (town name, else ~5 km geohash cell) |

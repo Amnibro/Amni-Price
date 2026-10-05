@@ -36,6 +36,7 @@ object PriceParser {
     )
     private val saleHint = Regex("""\b(sale|save|savings|special|deal|clearance|rollback|bogo|promo|\d+%\s*off)\b""", opts)
     private val noiseHint = Regex("""\b(sku|upc|plu|item\s*#|reg(ular)?\s*price|was)\b""", opts)
+    private val barcodeStripes = Regex("""^[IlL1|!iNMHVWUJ\[\]]{6,}$""")
 
     fun parse(lines: List<OcrLine>): ShelfTagResult {
         if (lines.isEmpty()) return ShelfTagResult(null, null, null, false)
@@ -113,7 +114,7 @@ object PriceParser {
             .asSequence()
             .filter { it.text != priceLine }
             .filterNot { unitPriceHint.containsMatchIn(it.text) || noiseHint.containsMatchIn(it.text) }
-            .filterNot { saleHint.matches(it.text.trim()) }
+            .filterNot { saleHint.matches(it.text.trim()) || barcodeStripes.matches(it.text.trim()) }
             .map { it to it.text.count(Char::isLetter) }
             .filter { (line, letters) -> letters >= 3 && letters.toFloat() / line.text.length > 0.5f }
             .maxByOrNull { (line, letters) -> (line.height.coerceAtLeast(1)) * 10 + letters }

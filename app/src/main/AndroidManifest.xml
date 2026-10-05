@@ -40,9 +40,5 @@
                 android:resource="@xml/file_paths" />
         </provider>
 
-        <!-- Bundle the ML Kit models with the APK instead of downloading at first run. -->
-        <meta-data
-            android:name="com.google.mlkit.vision.DEPENDENCIES"
-            android:value="ocr,barcode" />
     </application>
 </manifest>

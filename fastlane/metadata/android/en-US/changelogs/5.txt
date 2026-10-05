@@ -1,0 +1,3 @@
+• Fully open-source scanning for F-Droid: Tesseract OCR and ZXing barcodes, no Google services
+• Reads shelf tags from further away (720p camera analysis)
+• Barcode stripes are no longer mistaken for product names

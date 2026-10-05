@@ -13,7 +13,7 @@ class AppContainer(context: Context) {
     private val database = AppDatabase.build(context)
     val repository = PriceRepository(database)
     val settings = SettingsStore(context)
-    val vision by lazy { VisionEngine() }
+    val vision by lazy { VisionEngine(context.applicationContext) }
     val location = LocationService(context)
     val scanSession = ScanSession()
 }

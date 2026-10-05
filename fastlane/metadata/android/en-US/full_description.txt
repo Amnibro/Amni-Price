@@ -1,0 +1,27 @@
+Stores use algorithms to set prices by location, by day and even by shopper. Amni-Price is your side of the shelf: a fast, private record of what things actually cost, so you can see which store really has the lowest prices.
+
+SCAN
+• Point your camera at a shelf tag. Amni-Price reads the price, name, size and barcode on your phone, in real time.
+• Multi-buys like "2 for $5" become per-item prices, and sale tags are flagged.
+• Snap a receipt and every line is read: coupons are applied to the right item, quantities become unit prices, and the store and date are filled in.
+• Receipt abbreviations like "GV WHL MLK" are matched to products you've already logged.
+
+COMPARE
+• See the price gap you're tracking, the cheapest store and your personal inflation rate.
+• A cheapest-store ranking across every product you've seen at two or more stores.
+• Price history charts per product and store, unit prices per oz, lb, kg or L, and the best price elsewhere.
+
+MAP
+• Pick a product and see every store's price pinned on a map, colored against the cheapest.
+• Areas are ranked by average price, so you can see which town is cheapest overall.
+
+PLAN
+• Build a shopping list and get the cheapest single store, or the cheapest two-store split, with the savings shown.
+
+PRIVATE BY DESIGN
+• No account, no ads, no tracking.
+• Your prices, stores, list and location stay on your phone. Text and barcode reading runs on the device with Tesseract and ZXing, no Google services.
+• Export your data to CSV any time.
+
+OPEN SOURCE
+Amni-Price is free and open source under the GPL-3.0. The only network use is OpenStreetMap tiles for the price map. Read the code, report issues or contribute at github.com/Amnibro/Amni-Price.

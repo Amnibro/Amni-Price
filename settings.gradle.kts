@@ -15,3 +15,5 @@ dependencyResolutionManagement {
 
 rootProject.name = "AmniPrice"
 include(":app")
+include(":tesseract4android")
+project(":tesseract4android").projectDir = file("external/Tesseract4Android/tesseract4android")

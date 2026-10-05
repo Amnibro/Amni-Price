@@ -21,6 +21,10 @@ class PriceParserTest {
         assertEquals("1 gal", result.sizeText)
     }
 
+    @Test fun ignoresBarcodeStripesReadAsText() {
+        val result = PriceParser.parse(listOf(line("LARGE EGGS 12 CT", 30), line("2.99", 120), line("IHMNNVMNNMI", 60)))
+        assertEquals("LARGE EGGS 12 CT", result.productName)
+    }
     @Test fun readsSuperscriptCentsSplitBySpace() {
         assertEquals(399L, PriceParser.parseText("$3 99").priceCents)
     }
