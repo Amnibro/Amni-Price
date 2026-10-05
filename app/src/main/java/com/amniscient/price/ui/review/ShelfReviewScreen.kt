@@ -1,0 +1,179 @@
+package com.amniscient.price.ui.review
+
+import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.text.KeyboardOptions
+import androidx.compose.foundation.verticalScroll
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.automirrored.filled.ArrowBack
+import androidx.compose.material3.Button
+import androidx.compose.material3.ExperimentalMaterial3Api
+import androidx.compose.material3.Icon
+import androidx.compose.material3.IconButton
+import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.OutlinedTextField
+import androidx.compose.material3.Switch
+import androidx.compose.material3.Text
+import androidx.compose.material3.TopAppBar
+import androidx.compose.runtime.Composable
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.setValue
+import androidx.compose.ui.Alignment
+import androidx.compose.ui.Modifier
+import androidx.compose.ui.text.input.KeyboardCapitalization
+import androidx.compose.ui.text.input.KeyboardType
+import androidx.compose.ui.unit.dp
+import androidx.lifecycle.ViewModel
+import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import androidx.lifecycle.viewModelScope
+import com.amniscient.price.data.PriceInput
+import com.amniscient.price.data.PriceRepository
+import com.amniscient.price.data.PriceSource
+import com.amniscient.price.data.SettingsStore
+import com.amniscient.price.data.StoreEntity
+import com.amniscient.price.domain.Money
+import com.amniscient.price.domain.UnitParser
+import com.amniscient.price.scan.ScanSession
+import com.amniscient.price.ui.components.StorePicker
+import com.amniscient.price.ui.components.appViewModel
+import kotlinx.coroutines.flow.SharingStarted
+import kotlinx.coroutines.flow.StateFlow
+import kotlinx.coroutines.flow.stateIn
+import kotlinx.coroutines.launch
+
+class ShelfReviewViewModel(
+    private val repository: PriceRepository,
+    private val settings: SettingsStore,
+    session: ScanSession,
+) : ViewModel() {
+    private val draft = session.pendingShelf.also { session.pendingShelf = null }
+
+    val fromScan = draft?.fromScan == true
+    var name by mutableStateOf(draft?.productName.orEmpty())
+    var barcode by mutableStateOf(draft?.barcode.orEmpty())
+    var size by mutableStateOf(draft?.sizeText.orEmpty())
+    var price by mutableStateOf(draft?.priceCents?.let(Money::toPlain).orEmpty())
+    var onSale by mutableStateOf(draft?.onSale == true)
+    var storeId by mutableStateOf(settings.currentStoreId.value)
+
+    val stores: StateFlow<List<StoreEntity>> =
+        repository.allStores.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), emptyList())
+
+    init {
+        // A known barcode fills in the name we saved last time.
+        if (name.isBlank() && barcode.isNotBlank()) {
+            viewModelScope.launch {
+                repository.findByBarcode(barcode)?.let { if (name.isBlank()) name = it.name }
+            }
+        }
+    }
+
+    val priceCents: Long? get() = Money.parse(price)?.takeIf { it > 0 }
+    val canSave: Boolean get() = name.isNotBlank() && priceCents != null && storeId != null
+
+    fun addStore(name: String, location: String?) {
+        viewModelScope.launch { storeId = repository.addStore(name, location) }
+    }
+
+    fun save(onDone: () -> Unit) {
+        val store = storeId ?: return
+        val cents = priceCents ?: return
+        viewModelScope.launch {
+            repository.recordPrice(
+                PriceInput(
+                    productName = name.trim(),
+                    storeId = store,
+                    priceCents = cents,
+                    barcode = barcode.trim().ifEmpty { null },
+                    sizeText = size.trim().ifEmpty { null },
+                    onSale = onSale,
+                    source = if (fromScan) PriceSource.SHELF else PriceSource.MANUAL,
+                ),
+            )
+            settings.setCurrentStore(store)
+            onDone()
+        }
+    }
+}
+
+@OptIn(ExperimentalMaterial3Api::class)
+@Composable
+fun ShelfReviewScreen(onDone: () -> Unit) {
+    val vm = appViewModel { ShelfReviewViewModel(it.repository, it.settings, it.scanSession) }
+    val stores by vm.stores.collectAsStateWithLifecycle()
+
+    Column(Modifier.fillMaxSize()) {
+        TopAppBar(
+            title = { Text(if (vm.fromScan) "Confirm price" else "Add price") },
+            navigationIcon = { IconButton(onClick = onDone) { Icon(Icons.AutoMirrored.Filled.ArrowBack, "Back") } },
+        )
+        Column(
+            Modifier.weight(1f).verticalScroll(rememberScrollState()).padding(16.dp),
+            verticalArrangement = Arrangement.spacedBy(12.dp),
+        ) {
+            if (vm.fromScan) {
+                Text(
+                    "Check what the camera read and fix anything that's off.",
+                    style = MaterialTheme.typography.bodyMedium,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                )
+            }
+            OutlinedTextField(
+                value = vm.name, onValueChange = { vm.name = it },
+                label = { Text("Product") }, singleLine = true,
+                keyboardOptions = KeyboardOptions(capitalization = KeyboardCapitalization.Words),
+                modifier = Modifier.fillMaxWidth(),
+            )
+            OutlinedTextField(
+                value = vm.price, onValueChange = { vm.price = it },
+                label = { Text("Price") }, singleLine = true, prefix = { Text("$") },
+                keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Decimal),
+                modifier = Modifier.fillMaxWidth(),
+            )
+            Row(horizontalArrangement = Arrangement.spacedBy(12.dp)) {
+                OutlinedTextField(
+                    value = vm.size, onValueChange = { vm.size = it },
+                    label = { Text("Size (e.g. 12 oz)") }, singleLine = true,
+                    modifier = Modifier.weight(1f),
+                )
+                OutlinedTextField(
+                    value = vm.barcode, onValueChange = { vm.barcode = it },
+                    label = { Text("Barcode") }, singleLine = true,
+                    keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
+                    modifier = Modifier.weight(1f),
+                )
+            }
+            val quantity = UnitParser.parse(vm.size)
+            val cents = vm.priceCents
+            if (quantity != null && cents != null) {
+                Text(
+                    "Unit price: ${UnitParser.unitPriceLabel(cents, quantity)}",
+                    style = MaterialTheme.typography.bodyMedium,
+                    color = MaterialTheme.colorScheme.primary,
+                )
+            }
+            StorePicker(
+                stores = stores,
+                selectedId = vm.storeId,
+                onSelect = { vm.storeId = it },
+                onAddStore = vm::addStore,
+                modifier = Modifier.fillMaxWidth(),
+            )
+            Row(verticalAlignment = Alignment.CenterVertically) {
+                Text("On sale / promo price", Modifier.weight(1f))
+                Switch(checked = vm.onSale, onCheckedChange = { vm.onSale = it })
+            }
+            Spacer(Modifier.padding(4.dp))
+            Button(onClick = { vm.save(onDone) }, enabled = vm.canSave, modifier = Modifier.fillMaxWidth()) {
+                Text("Save price")
+            }
+        }
+    }
+}

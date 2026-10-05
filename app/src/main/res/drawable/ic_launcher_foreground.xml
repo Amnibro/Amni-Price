@@ -1,0 +1,20 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Price tag with a scan line. 108dp canvas, art kept inside the 66dp safe zone. -->
+<vector xmlns:android="http://schemas.android.com/apk/res/android"
+    android:width="108dp"
+    android:height="108dp"
+    android:viewportWidth="108"
+    android:viewportHeight="108">
+    <path
+        android:fillColor="#FFFFFFFF"
+        android:pathData="M36,34 L60,34 L76,54 L60,74 L36,74 Q32,74 32,70 L32,38 Q32,34 36,34 Z" />
+    <path
+        android:fillColor="#FF1B6B4A"
+        android:pathData="M63,54 m-4,0 a4,4 0,1 1,8 0 a4,4 0,1 1,-8 0" />
+    <path
+        android:fillColor="#FF1B6B4A"
+        android:pathData="M38,46 L54,46 L54,49 L38,49 Z M38,52.5 L50,52.5 L50,55.5 L38,55.5 Z M38,59 L54,59 L54,62 L38,62 Z" />
+    <path
+        android:fillColor="#FFF5C542"
+        android:pathData="M26,53 L82,53 L82,55 L26,55 Z" />
+</vector>
