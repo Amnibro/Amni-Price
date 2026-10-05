@@ -1,0 +1,4 @@
+• Reproducible build: the F-Droid APK is byte-for-byte the same as the one on GitHub, signed by the developer
+• Fully open-source scanning: Tesseract OCR and ZXing barcodes, no Google services
+• Reads shelf tags from further away (720p camera analysis)
+• Barcode stripes are no longer mistaken for product names
