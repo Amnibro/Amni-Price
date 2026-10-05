@@ -9,5 +9,6 @@ class AmniPriceApp : Application() {
     override fun onCreate() {
         super.onCreate()
         container = AppContainer(this)
+        com.amniscient.price.map.MapTiles.init(this)
     }
 }

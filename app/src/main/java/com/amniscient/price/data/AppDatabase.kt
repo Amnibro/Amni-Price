@@ -27,7 +27,7 @@ class Converters {
  */
 @Database(
     entities = [StoreEntity::class, ProductEntity::class, PriceEntity::class, ShoppingItemEntity::class],
-    version = 2,
+    version = 3,
     exportSchema = true,
 )
 @TypeConverters(Converters::class)
@@ -54,6 +54,15 @@ abstract class AppDatabase : RoomDatabase() {
             }
         }
 
+        /** v3: store coordinates and region for the price map. */
+        val MIGRATION_2_3 = object : Migration(2, 3) {
+            override fun migrate(db: SupportSQLiteDatabase) {
+                db.execSQL("ALTER TABLE stores ADD COLUMN latitude REAL")
+                db.execSQL("ALTER TABLE stores ADD COLUMN longitude REAL")
+                db.execSQL("ALTER TABLE stores ADD COLUMN region TEXT")
+            }
+        }
+
         private const val SHOPPING_LIST_SQL =
             "CREATE TABLE IF NOT EXISTS `shopping_list` (`id` INTEGER PRIMARY KEY AUTOINCREMENT NOT NULL, " +
                 "`name` TEXT NOT NULL, `productId` INTEGER, `quantity` INTEGER NOT NULL, `checked` INTEGER NOT NULL, " +
@@ -62,7 +71,7 @@ abstract class AppDatabase : RoomDatabase() {
 
         fun build(context: Context): AppDatabase =
             Room.databaseBuilder(context, AppDatabase::class.java, "amni-price.db")
-                .addMigrations(MIGRATION_1_2)
+                .addMigrations(MIGRATION_1_2, MIGRATION_2_3)
                 .build()
     }
 }

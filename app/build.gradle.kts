@@ -14,8 +14,14 @@ android {
         applicationId = "com.amniscient.price"
         minSdk = 26
         targetSdk = 35
-        versionCode = 2
-        versionName = "0.2.0"
+        versionCode = 3
+        versionName = "0.3.0"
+
+        // Map tiles: override in gradle.properties / local.properties with your provider before publishing.
+        val tileUrl = (project.findProperty("amni.mapTileUrl") as String?) ?: "https://tile.openstreetmap.org/{z}/{x}/{y}.png"
+        val attribution = (project.findProperty("amni.mapAttribution") as String?) ?: "© OpenStreetMap contributors"
+        buildConfigField("String", "MAP_TILE_URL", "\"$tileUrl\"")
+        buildConfigField("String", "MAP_ATTRIBUTION", "\"$attribution\"")
     }
 
     buildTypes {
@@ -35,6 +41,11 @@ android {
     lint {
         // Lint's Kotlin analyzer crashes on some test files (a lint bug); app sources are still fully checked.
         ignoreTestSources = true
+    }
+    sourceSets {
+        // Exported Room schemas, so migration tests can build every historical version.
+        // Robolectric reads the debug variant's assets; release builds never include these.
+        getByName("debug").assets.srcDir("$projectDir/schemas")
     }
     testOptions {
         unitTests {
@@ -79,9 +90,13 @@ dependencies {
     implementation(libs.mlkit.barcode.scanning)
     implementation(libs.kotlinx.coroutines.play.services)
 
+    // Price map (OpenStreetMap-based, no API key or Play Services needed).
+    implementation(libs.osmdroid)
+
     testImplementation(libs.junit)
     // Screenshot tests: real screens rendered on the JVM (no emulator needed).
     testImplementation(libs.robolectric)
+    testImplementation(libs.androidx.room.testing)
     testImplementation(libs.androidx.test.ext.junit)
     testImplementation(libs.androidx.test.core)
     testImplementation(platform(libs.androidx.compose.bom))

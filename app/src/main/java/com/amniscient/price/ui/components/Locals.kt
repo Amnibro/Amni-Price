@@ -17,3 +17,6 @@ suspend fun SnackbarHostState.showUndo(message: String, onUndo: suspend () -> Un
     val result = showSnackbar(message, actionLabel = "Undo", withDismissAction = true, duration = SnackbarDuration.Short)
     if (result == SnackbarResult.ActionPerformed) onUndo()
 }
+
+/** False in screenshot tests so the map doesn't try to download tiles. */
+val LocalMapTilesOnline = staticCompositionLocalOf { true }

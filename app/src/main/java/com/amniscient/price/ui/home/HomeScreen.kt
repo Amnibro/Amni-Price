@@ -123,7 +123,7 @@ fun HomeScreen(
                             Icon(Icons.Default.EmojiEvents, null, tint = Amni.palette.brass)
                             Spacer(Modifier.width(12.dp))
                             Column(Modifier.weight(1f)) {
-                                Text(top.store.name, style = MaterialTheme.typography.titleMedium)
+                                Text(top.store.displayName, style = MaterialTheme.typography.titleMedium)
                                 Text(
                                     "Lowest price on ${top.score.cheapestCount} of ${top.score.comparedProducts} compared items",
                                     style = MaterialTheme.typography.bodySmall,

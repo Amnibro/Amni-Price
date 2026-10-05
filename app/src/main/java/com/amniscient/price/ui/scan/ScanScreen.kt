@@ -42,6 +42,7 @@ import androidx.compose.material.icons.filled.Check
 import androidx.compose.material.icons.filled.Close
 import androidx.compose.material.icons.filled.Edit
 import androidx.compose.material.icons.filled.FlashOff
+import androidx.compose.material.icons.filled.NearMe
 import androidx.compose.material.icons.filled.FlashOn
 import androidx.compose.material.icons.filled.PhotoLibrary
 import androidx.compose.material.icons.filled.QrCode
@@ -102,7 +103,7 @@ fun ScanScreen(
     onReceiptCaptured: () -> Unit,
     onOpenProduct: (Long) -> Unit,
 ) {
-    val vm = appViewModel { ScanViewModel(it.repository, it.settings, it.vision, it.scanSession) }
+    val vm = appViewModel { ScanViewModel(it.repository, it.settings, it.vision, it.scanSession, it.location) }
     val state by vm.state.collectAsStateWithLifecycle()
     val stores by vm.stores.collectAsStateWithLifecycle()
     val currentStoreId by vm.currentStoreId.collectAsStateWithLifecycle()
@@ -111,7 +112,10 @@ fun ScanScreen(
     val prefs = LocalUiPrefs.current
     val snackbar = LocalSnackbar.current
 
-    LaunchedEffect(Unit) { vm.consumeModeRequest() }
+    LaunchedEffect(Unit) {
+        vm.consumeModeRequest()
+        vm.detectNearbyStore()
+    }
 
     var hasCamera by remember {
         mutableStateOf(ContextCompat.checkSelfPermission(context, Manifest.permission.CAMERA) == PackageManager.PERMISSION_GRANTED)
@@ -172,6 +176,22 @@ fun ScanScreen(
                         Text("${state.savedThisSession}", style = AmniText.price, color = Amni.palette.deal)
                         Eyebrow("saved")
                     }
+                }
+            }
+            state.suggestedStore?.let { s ->
+                Row(
+                    Modifier
+                        .padding(start = 16.dp, end = 8.dp, top = 8.dp)
+                        .fillMaxWidth()
+                        .background(Amni.palette.brassDim, MaterialTheme.shapes.small)
+                        .clickable(onClick = vm::acceptSuggestion)
+                        .padding(start = 12.dp),
+                    verticalAlignment = Alignment.CenterVertically,
+                ) {
+                    Icon(Icons.Default.NearMe, null, tint = Amni.palette.brass, modifier = Modifier.size(16.dp))
+                    Spacer(Modifier.width(8.dp))
+                    Text("You're at ${s.displayName}? Tap to switch", style = MaterialTheme.typography.bodyMedium, modifier = Modifier.weight(1f))
+                    IconButton(onClick = vm::dismissSuggestion) { Icon(Icons.Default.Close, "Dismiss", Modifier.size(18.dp)) }
                 }
             }
             SingleChoiceSegmentedButtonRow(Modifier.fillMaxWidth().padding(16.dp, 10.dp)) {

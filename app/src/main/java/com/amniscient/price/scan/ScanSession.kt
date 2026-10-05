@@ -19,4 +19,6 @@ class ScanSession {
     var pendingReceipt: ReceiptResult? = null
     /** Set by shortcuts (e.g. "Scan receipt" on Home) to open the camera in a given mode. */
     var requestReceiptMode: Boolean = false
+    /** Product to show when the price map opens ("View on map" from a product page). */
+    var mapProductId: Long? = null
 }

@@ -11,7 +11,20 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.Map
+import androidx.compose.material.icons.filled.MyLocation
+import androidx.compose.material.icons.filled.Place
 import androidx.compose.material3.Button
+import androidx.compose.material3.Icon
+import androidx.compose.material3.TextButton
+import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.width
+import androidx.compose.runtime.rememberCoroutineScope
+import com.amniscient.price.data.LocationService
+import com.amniscient.price.ui.components.LocalSnackbar
+import com.amniscient.price.ui.components.rememberLocationPermission
+import kotlinx.coroutines.launch
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedButton
@@ -44,16 +57,35 @@ import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.stateIn
 import kotlin.math.roundToInt
 
-class StoreDetailViewModel(repository: PriceRepository, private val settings: SettingsStore, storeId: Long) : ViewModel() {
+class StoreDetailViewModel(
+    private val repository: PriceRepository,
+    private val settings: SettingsStore,
+    private val location: LocationService,
+    private val storeId: Long,
+) : ViewModel() {
     val detail: StateFlow<StoreDetail?> =
         repository.storeDetail(storeId).stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), null)
     val currentStoreId = settings.currentStoreId
     fun setCurrent(id: Long) = settings.setCurrentStore(id)
+    fun hasLocationPermission() = location.hasPermission()
+
+    /** Pins the store where you're standing. Returns false if no location fix was available. */
+    suspend fun pinHere(): Boolean {
+        val (here, region) = location.hereWithRegion() ?: return false
+        repository.setStoreLocation(storeId, here, region)
+        return true
+    }
 }
 
 @Composable
-fun StoreDetailScreen(storeId: Long, onBack: () -> Unit, onOpenProduct: (Long) -> Unit) {
-    val vm = appViewModel { StoreDetailViewModel(it.repository, it.settings, storeId) }
+fun StoreDetailScreen(storeId: Long, onBack: () -> Unit, onOpenProduct: (Long) -> Unit, onSetLocation: (Long) -> Unit) {
+    val vm = appViewModel { StoreDetailViewModel(it.repository, it.settings, it.location, storeId) }
+    val snackbar = LocalSnackbar.current
+    val scope = rememberCoroutineScope()
+    val pin: () -> Unit = {
+        scope.launch { snackbar.showSnackbar(if (vm.pinHere()) "Pinned to your location" else "Couldn't get a location fix") }
+    }
+    val askLocation = rememberLocationPermission { granted -> if (granted) pin() }
     val detail by vm.detail.collectAsStateWithLifecycle()
     val current by vm.currentStoreId.collectAsStateWithLifecycle()
 
@@ -104,6 +136,40 @@ fun StoreDetailScreen(storeId: Long, onBack: () -> Unit, onOpenProduct: (Long) -
                 } else {
                     Button(onClick = { vm.setCurrent(d.store.id) }, shape = MaterialTheme.shapes.small, modifier = Modifier.fillMaxWidth()) {
                         Text("I'm shopping here")
+                    }
+                }
+            }
+            item {
+                SectionHeader("Location")
+                Panel {
+                    Row(Modifier.padding(16.dp), verticalAlignment = Alignment.CenterVertically) {
+                        Icon(Icons.Default.Place, null, tint = Amni.palette.brass)
+                        Spacer(Modifier.width(12.dp))
+                        Column(Modifier.weight(1f)) {
+                            val pos = d.store.position
+                            Text(
+                                if (pos == null) "Not on the price map yet" else d.store.region ?: "On the map",
+                                style = MaterialTheme.typography.titleSmall,
+                            )
+                            Text(
+                                if (pos == null) "Add a location to compare prices by area." else "%.4f, %.4f".format(pos.lat, pos.lng),
+                                style = if (pos == null) MaterialTheme.typography.bodySmall else AmniText.priceSmall,
+                                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                            )
+                        }
+                    }
+                    HorizontalDivider(color = Amni.palette.hairline)
+                    Row(Modifier.padding(8.dp), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                        TextButton(onClick = { if (vm.hasLocationPermission()) pin() else askLocation() }) {
+                            Icon(Icons.Default.MyLocation, null, Modifier.size(16.dp))
+                            Spacer(Modifier.width(6.dp))
+                            Text("I'm here now")
+                        }
+                        TextButton(onClick = { onSetLocation(d.store.id) }) {
+                            Icon(Icons.Default.Map, null, Modifier.size(16.dp))
+                            Spacer(Modifier.width(6.dp))
+                            Text("Pick on map")
+                        }
                     }
                 }
             }

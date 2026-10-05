@@ -5,6 +5,7 @@ import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.test.junit4.createComposeRule
 import androidx.compose.ui.test.onNodeWithText
@@ -20,6 +21,9 @@ import com.amniscient.price.ui.compare.CompareScreen
 import com.amniscient.price.ui.compare.ProductDetailScreen
 import com.amniscient.price.ui.home.HomeScreen
 import com.amniscient.price.ui.list.ShoppingListScreen
+import com.amniscient.price.ui.map.LocationPickerScreen
+import com.amniscient.price.ui.map.MapScreen
+import com.amniscient.price.ui.components.LocalMapTilesOnline
 import com.amniscient.price.ui.onboarding.OnboardingScreen
 import com.amniscient.price.ui.review.ReceiptReviewScreen
 import com.amniscient.price.ui.review.ShelfReviewScreen
@@ -60,7 +64,9 @@ class ScreenshotTest {
     private fun shoot(name: String, dark: Boolean = true, before: () -> Unit = {}, content: @Composable () -> Unit) {
         compose.setContent {
             AmniPriceTheme(darkTheme = dark) {
-                Box(Modifier.fillMaxSize().background(MaterialTheme.colorScheme.background)) { content() }
+                CompositionLocalProvider(LocalMapTilesOnline provides false) {
+                    Box(Modifier.fillMaxSize().background(MaterialTheme.colorScheme.background)) { content() }
+                }
             }
         }
         settle()
@@ -100,15 +106,15 @@ class ScreenshotTest {
     }) { CompareScreen(noopId, noopId, noop, noop) }
 
     @Test fun productDetail() = shoot("06_product_detail") {
-        ProductDetailScreen(productId = 1L, onBack = noop, onAddPrice = noop, onOpenStore = noopId)
+        ProductDetailScreen(productId = 1L, onBack = noop, onAddPrice = noop, onOpenStore = noopId, onViewOnMap = noop)
     }
 
     @Test fun productDetailLight() = shoot("07_product_detail_light", dark = false) {
-        ProductDetailScreen(productId = 1L, onBack = noop, onAddPrice = noop, onOpenStore = noopId)
+        ProductDetailScreen(productId = 1L, onBack = noop, onAddPrice = noop, onOpenStore = noopId, onViewOnMap = noop)
     }
 
     @Test fun storeDetail() = shoot("08_store_detail") {
-        StoreDetailScreen(storeId = 1L, onBack = noop, onOpenProduct = noopId)
+        StoreDetailScreen(storeId = 1L, onBack = noop, onOpenProduct = noopId, onSetLocation = noopId)
     }
 
     @Test fun shoppingList() = shoot("09_shopping_list") {
@@ -132,6 +138,20 @@ class ScreenshotTest {
         )
         ReceiptReviewScreen(onDone = noop)
     }
+
+    @Test fun mapProduct() = shoot("13_map_product") {
+        container.scanSession.mapProductId = 1L
+        MapScreen(onOpenStore = noopId, onManageStores = noop)
+    }
+
+    @Test fun mapOverall() = shoot("14_map_overall") { MapScreen(onOpenStore = noopId, onManageStores = noop) }
+
+    @Test fun mapLight() = shoot("15_map_product_light", dark = false) {
+        container.scanSession.mapProductId = 2L
+        MapScreen(onOpenStore = noopId, onManageStores = noop)
+    }
+
+    @Test fun locationPicker() = shoot("16_location_picker") { LocationPickerScreen(storeId = 1L, onDone = noop) }
 
     @Test fun settings() = shoot("12_settings") { SettingsScreen(onBack = noop, onManageStores = noop) }
 }

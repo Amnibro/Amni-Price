@@ -7,14 +7,25 @@ import androidx.room.ForeignKey
 import androidx.room.Index
 import androidx.room.PrimaryKey
 import com.amniscient.price.domain.Category
+import com.amniscient.price.domain.LatLng
 
 @Entity(tableName = "stores")
 data class StoreEntity(
     @PrimaryKey(autoGenerate = true) val id: Long = 0,
     val name: String,
+    /** Free-text branch label, e.g. "Main St". Distinguishes branches of the same chain. */
     val location: String? = null,
     val createdAt: Long = System.currentTimeMillis(),
-)
+    val latitude: Double? = null,
+    val longitude: Double? = null,
+    /** Town or area used to group stores on the price map; filled from the map position when possible. */
+    val region: String? = null,
+) {
+    val position: LatLng? get() = if (latitude != null && longitude != null) LatLng(latitude, longitude) else null
+
+    /** "Kroger · Main St" when a branch label exists. */
+    val displayName: String get() = location?.let { "$name · $it" } ?: name
+}
 
 @Entity(
     tableName = "products",

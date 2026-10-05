@@ -8,6 +8,7 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Checklist
 import androidx.compose.material.icons.filled.DocumentScanner
 import androidx.compose.material.icons.filled.Insights
+import androidx.compose.material.icons.filled.Map
 import androidx.compose.material.icons.filled.SpaceDashboard
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
@@ -41,6 +42,8 @@ import com.amniscient.price.ui.compare.ProductDetailScreen
 import com.amniscient.price.ui.components.LocalSnackbar
 import com.amniscient.price.ui.home.HomeScreen
 import com.amniscient.price.ui.list.ShoppingListScreen
+import com.amniscient.price.ui.map.LocationPickerScreen
+import com.amniscient.price.ui.map.MapScreen
 import com.amniscient.price.ui.onboarding.OnboardingScreen
 import com.amniscient.price.ui.review.ReceiptReviewScreen
 import com.amniscient.price.ui.review.ShelfReviewScreen
@@ -57,6 +60,8 @@ object Routes {
     const val SCAN = "scan"
     const val COMPARE = "compare"
     const val LIST = "list"
+    const val MAP = "map"
+    const val STORE_LOCATION = "store/{id}/location"
     const val SETTINGS = "settings"
     const val STORES = "stores"
     const val STORE = "store/{id}"
@@ -65,6 +70,7 @@ object Routes {
     const val REVIEW_RECEIPT = "review/receipt"
     fun product(id: Long) = "product/$id"
     fun store(id: Long) = "store/$id"
+    fun storeLocation(id: Long) = "store/$id/location"
 }
 
 private data class TopLevel(val route: String, val label: String, val icon: ImageVector)
@@ -73,6 +79,7 @@ private val topLevel = listOf(
     TopLevel(Routes.HOME, "Home", Icons.Default.SpaceDashboard),
     TopLevel(Routes.SCAN, "Scan", Icons.Default.DocumentScanner),
     TopLevel(Routes.COMPARE, "Compare", Icons.Default.Insights),
+    TopLevel(Routes.MAP, "Map", Icons.Default.Map),
     TopLevel(Routes.LIST, "List", Icons.Default.Checklist),
 )
 
@@ -165,6 +172,12 @@ fun AmniPriceRoot(startOnboarding: Boolean, nav: NavHostController = rememberNav
                         onOpenStore = { nav.navigate(Routes.store(it)) },
                     )
                 }
+                composable(Routes.MAP) {
+                    MapScreen(onOpenStore = { nav.navigate(Routes.store(it)) }, onManageStores = { nav.navigate(Routes.STORES) })
+                }
+                composable(Routes.STORE_LOCATION, arguments = listOf(navArgument("id") { type = NavType.LongType })) { entry ->
+                    LocationPickerScreen(storeId = entry.arguments?.getLong("id") ?: 0L, onDone = { nav.popBackStack() })
+                }
                 composable(Routes.SETTINGS) {
                     SettingsScreen(onBack = { nav.popBackStack() }, onManageStores = { nav.navigate(Routes.STORES) })
                 }
@@ -176,6 +189,7 @@ fun AmniPriceRoot(startOnboarding: Boolean, nav: NavHostController = rememberNav
                         storeId = entry.arguments?.getLong("id") ?: 0L,
                         onBack = { nav.popBackStack() },
                         onOpenProduct = { nav.navigate(Routes.product(it)) },
+                        onSetLocation = { nav.navigate(Routes.storeLocation(it)) },
                     )
                 }
                 composable(Routes.REVIEW_SHELF) { ShelfReviewScreen(onDone = { nav.popBackStack() }) }
@@ -186,6 +200,7 @@ fun AmniPriceRoot(startOnboarding: Boolean, nav: NavHostController = rememberNav
                         onBack = { nav.popBackStack() },
                         onAddPrice = { nav.navigate(Routes.REVIEW_SHELF) },
                         onOpenStore = { nav.navigate(Routes.store(it)) },
+                        onViewOnMap = { nav.navigateTopLevel(Routes.MAP) },
                     )
                 }
             }

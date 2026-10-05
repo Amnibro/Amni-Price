@@ -1,6 +1,15 @@
 package com.amniscient.price.ui.components
 
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.width
+import androidx.compose.material.icons.filled.PinDrop
+import androidx.compose.material3.Switch
+import androidx.compose.ui.Alignment
+import androidx.compose.ui.platform.LocalContext
+import com.amniscient.price.AmniPriceApp
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material.icons.Icons
@@ -34,7 +43,7 @@ fun StorePicker(
     stores: List<StoreEntity>,
     selectedId: Long?,
     onSelect: (Long) -> Unit,
-    onAddStore: (name: String, location: String?) -> Unit,
+    onAddStore: (name: String, location: String?, pinHere: Boolean) -> Unit,
     modifier: Modifier = Modifier,
     label: String = "Store",
 ) {
@@ -44,7 +53,7 @@ fun StorePicker(
 
     ExposedDropdownMenuBox(expanded = expanded, onExpandedChange = { expanded = it }, modifier = modifier) {
         OutlinedTextField(
-            value = selected?.name ?: "",
+            value = selected?.displayName ?: "",
             onValueChange = {},
             readOnly = true,
             label = { Text(label) },
@@ -74,7 +83,8 @@ fun StorePicker(
         StoreDialog(
             title = "New store",
             onDismiss = { showAdd = false },
-            onConfirm = { name, location -> onAddStore(name, location); showAdd = false },
+            onConfirm = { name, location, pinHere -> onAddStore(name, location, pinHere); showAdd = false },
+            offerPinHere = true,
         )
     }
 }
@@ -85,10 +95,17 @@ fun StoreDialog(
     initialName: String = "",
     initialLocation: String = "",
     onDismiss: () -> Unit,
-    onConfirm: (name: String, location: String?) -> Unit,
+    onConfirm: (name: String, location: String?, pinHere: Boolean) -> Unit,
+    offerPinHere: Boolean = false,
 ) {
+    val context = LocalContext.current
     var name by remember { mutableStateOf(initialName) }
     var location by remember { mutableStateOf(initialLocation) }
+    // Default on when we already have permission: you usually add a store while standing in it.
+    var pinHere by remember {
+        mutableStateOf(offerPinHere && (context.applicationContext as AmniPriceApp).container.location.hasPermission())
+    }
+    val askLocation = rememberLocationPermission { granted -> pinHere = granted }
     AlertDialog(
         onDismissRequest = onDismiss,
         shape = MaterialTheme.shapes.extraLarge,
@@ -113,10 +130,27 @@ fun StoreDialog(
                     shape = MaterialTheme.shapes.small,
                     keyboardOptions = KeyboardOptions(capitalization = KeyboardCapitalization.Words),
                 )
+                if (offerPinHere) {
+                    Row(Modifier.padding(top = 10.dp), verticalAlignment = Alignment.CenterVertically) {
+                        Icon(Icons.Default.PinDrop, null, tint = Amni.palette.brass)
+                        Spacer(Modifier.width(10.dp))
+                        Column(Modifier.weight(1f)) {
+                            Text("Pin to where I am", style = MaterialTheme.typography.bodyLarge)
+                            Text(
+                                "Puts the store on the price map. Stays on this phone.",
+                                style = MaterialTheme.typography.bodySmall,
+                                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                            )
+                        }
+                        Switch(checked = pinHere, onCheckedChange = { on ->
+                            if (on && !(context.applicationContext as AmniPriceApp).container.location.hasPermission()) askLocation() else pinHere = on
+                        })
+                    }
+                }
             }
         },
         confirmButton = {
-            TextButton(enabled = name.isNotBlank(), onClick = { onConfirm(name.trim(), location.trim().ifEmpty { null }) }) {
+            TextButton(enabled = name.isNotBlank(), onClick = { onConfirm(name.trim(), location.trim().ifEmpty { null }, pinHere) }) {
                 Text("Save")
             }
         },

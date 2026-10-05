@@ -193,7 +193,8 @@ fun SettingsScreen(onBack: () -> Unit, onManageStores: () -> Unit) {
                     Spacer(Modifier.width(12.dp))
                     Text(
                         "Text recognition and barcode scanning run on this phone. Photos are never saved or uploaded, " +
-                            "there are no accounts, ads or trackers, and your prices only leave the device when you export them.",
+                            "there are no accounts, ads or trackers, and your prices and location only leave the device when you export them. " +
+                            "The price map downloads map images for the area you're viewing; nothing about your prices is sent.",
                         style = MaterialTheme.typography.bodyMedium,
                     )
                 }

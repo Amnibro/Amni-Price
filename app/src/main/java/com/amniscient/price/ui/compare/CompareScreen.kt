@@ -293,7 +293,7 @@ private fun StoreRanking(ranking: List<RankedStore>, onOpenStore: (Long) -> Unit
                         Text("${i + 1}", style = AmniText.price, color = if (i == 0) Amni.palette.brass else MaterialTheme.colorScheme.onSurface)
                     }
                     Column(Modifier.weight(1f).padding(horizontal = 16.dp)) {
-                        Text(r.store.name, style = MaterialTheme.typography.titleMedium)
+                        Text(r.store.displayName, style = MaterialTheme.typography.titleMedium)
                         Text(
                             "Cheapest on ${r.score.cheapestCount} of ${r.score.comparedProducts} compared items",
                             style = MaterialTheme.typography.bodySmall,

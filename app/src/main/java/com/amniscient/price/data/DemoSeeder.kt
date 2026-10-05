@@ -1,16 +1,27 @@
 package com.amniscient.price.data
 
 import com.amniscient.price.domain.Categorizer
+import com.amniscient.price.domain.LatLng
 import java.util.concurrent.TimeUnit
 
 /**
- * Realistic sample data: four stores, a grocery basket, eight weeks of price history.
- * Used by screenshot tests and the debug-only "Load sample data" setting.
+ * Realistic sample data: seven branches across three towns around Columbus, Ohio, a grocery
+ * basket and eight weeks of price history, with prices that differ by area. Used by screenshot
+ * tests and the debug-only "Load sample data" setting. All prices are made up.
  */
 object DemoSeeder {
     private data class Item(val name: String, val size: String?, val barcode: String?, val base: Map<String, Long>)
+    private data class DemoStore(val chain: String, val branch: String, val position: LatLng, val region: String, val factor: Double)
 
-    private val stores = listOf("Aldi" to "Oak Ave", "Kroger" to "Main St", "Target" to "Riverside", "Whole Foods" to "Downtown")
+    private val stores = listOf(
+        DemoStore("Aldi", "Oak Ave", LatLng(39.9790, -82.9650), "Columbus", 1.00),
+        DemoStore("Kroger", "Main St", LatLng(39.9560, -82.9900), "Columbus", 1.00),
+        DemoStore("Whole Foods", "Downtown", LatLng(39.9700, -83.0030), "Columbus", 1.00),
+        DemoStore("Target", "Riverside", LatLng(40.0990, -83.1140), "Dublin", 1.07),
+        DemoStore("Kroger", "Sawmill", LatLng(40.0880, -83.0900), "Dublin", 1.09),
+        DemoStore("Aldi", "State St", LatLng(40.1260, -82.9290), "Westerville", 0.96),
+        DemoStore("Kroger", "Polaris", LatLng(40.1450, -82.9800), "Westerville", 0.97),
+    )
 
     private val items = listOf(
         Item("Great Value Whole Milk", "1 gal", "078742351865", mapOf("Aldi" to 329, "Kroger" to 389, "Target" to 399, "Whole Foods" to 549)),
@@ -26,24 +37,26 @@ object DemoSeeder {
     )
 
     suspend fun seed(repository: PriceRepository, now: Long = System.currentTimeMillis()) {
-        val storeIds = stores.associate { (name, loc) -> name to repository.addStore(name, loc) }
+        val storeIds = stores.associateWith { s -> repository.addStore(s.chain, s.branch, s.position, s.region) }
         val day = TimeUnit.DAYS.toMillis(1)
         val inputs = mutableListOf<PriceInput>()
         items.forEachIndexed { idx, item ->
-            item.base.forEach { (store, base) ->
+            stores.forEachIndexed { sIdx, store ->
+                val base = item.base[store.chain] ?: return@forEachIndexed
+                val local = (base * store.factor).toLong()
                 // Four visits over eight weeks; prices drift up the way they have been.
                 listOf(56, 35, 14, 1).forEachIndexed { visit, daysAgo ->
-                    val drift = (base * (visit * (idx % 3 + 1)) / 100.0).toLong()
-                    val wobble = if ((idx + visit + store.length) % 5 == 0) -base / 12 else 0
+                    val drift = (local * (visit * (idx % 3 + 1)) / 100.0).toLong()
+                    val wobble = if ((idx + visit + sIdx) % 5 == 0) -local / 12 else 0
                     inputs += PriceInput(
                         productName = item.name,
                         storeId = storeIds.getValue(store),
-                        priceCents = base + drift + wobble,
+                        priceCents = local + drift + wobble,
                         barcode = item.barcode,
                         sizeText = item.size,
                         onSale = wobble != 0L,
                         source = if (visit % 2 == 0) PriceSource.SHELF else PriceSource.RECEIPT,
-                        observedAt = now - daysAgo * day - (idx * 7 + store.length) * 60_000L,
+                        observedAt = now - daysAgo * day - (idx * 7 + sIdx) * 60_000L,
                         category = Categorizer.categorize(item.name),
                     )
                 }

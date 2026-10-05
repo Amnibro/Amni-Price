@@ -18,6 +18,7 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.AddShoppingCart
 import androidx.compose.material.icons.filled.Delete
 import androidx.compose.material.icons.filled.Edit
+import androidx.compose.material.icons.filled.Map
 import androidx.compose.material.icons.filled.PostAdd
 import androidx.compose.material.icons.filled.Share
 import androidx.compose.material3.AlertDialog
@@ -102,6 +103,10 @@ class ProductDetailViewModel(
         onDone()
     }
 
+    fun prepareMap() {
+        session.mapProductId = detail.value?.product?.id
+    }
+
     fun shareText(): String? {
         val d = detail.value ?: return null
         val lines = d.byStore.joinToString("\n") { "• ${it.storeName}: ${Money.format(it.latest.priceCents)}" }
@@ -110,7 +115,13 @@ class ProductDetailViewModel(
 }
 
 @Composable
-fun ProductDetailScreen(productId: Long, onBack: () -> Unit, onAddPrice: () -> Unit, onOpenStore: (Long) -> Unit) {
+fun ProductDetailScreen(
+    productId: Long,
+    onBack: () -> Unit,
+    onAddPrice: () -> Unit,
+    onOpenStore: (Long) -> Unit,
+    onViewOnMap: () -> Unit,
+) {
     val vm = appViewModel { ProductDetailViewModel(it.repository, it.scanSession, productId) }
     val detail by vm.detail.collectAsStateWithLifecycle()
     val context = LocalContext.current
@@ -132,6 +143,7 @@ fun ProductDetailScreen(productId: Long, onBack: () -> Unit, onAddPrice: () -> U
                         )
                     }
                 }) { Icon(Icons.Default.Share, "Share") }
+                IconButton(onClick = { vm.prepareMap(); onViewOnMap() }) { Icon(Icons.Default.Map, "View on price map") }
                 IconButton(onClick = { editing = true }) { Icon(Icons.Default.Edit, "Edit product") }
             },
         )

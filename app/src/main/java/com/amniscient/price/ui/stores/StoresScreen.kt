@@ -36,6 +36,7 @@ import androidx.compose.ui.unit.dp
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.lifecycle.viewModelScope
+import com.amniscient.price.data.LocationService
 import com.amniscient.price.data.PriceRepository
 import com.amniscient.price.data.SettingsStore
 import com.amniscient.price.data.StoreEntity
@@ -50,12 +51,19 @@ import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.launch
 
-class StoresViewModel(private val repository: PriceRepository, private val settings: SettingsStore) : ViewModel() {
+class StoresViewModel(
+    private val repository: PriceRepository,
+    private val settings: SettingsStore,
+    private val location: LocationService,
+) : ViewModel() {
     val stores: StateFlow<List<StoreEntity>> =
         repository.allStores.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), emptyList())
     val currentStoreId = settings.currentStoreId
 
-    fun add(name: String, location: String?) = viewModelScope.launch { repository.addStore(name, location) }
+    fun add(name: String, branch: String?, pinHere: Boolean) = viewModelScope.launch {
+        val pin = if (pinHere) location.hereWithRegion() else null
+        repository.addStore(name, branch, pin?.first, pin?.second)
+    }
     fun update(store: StoreEntity) = viewModelScope.launch { repository.updateStore(store) }
     fun delete(store: StoreEntity) = viewModelScope.launch {
         if (settings.currentStoreId.value == store.id) settings.setCurrentStore(null)
@@ -66,7 +74,7 @@ class StoresViewModel(private val repository: PriceRepository, private val setti
 
 @Composable
 fun StoresScreen(onBack: () -> Unit, onOpenStore: (Long) -> Unit) {
-    val vm = appViewModel { StoresViewModel(it.repository, it.settings) }
+    val vm = appViewModel { StoresViewModel(it.repository, it.settings, it.location) }
     val stores by vm.stores.collectAsStateWithLifecycle()
     val currentId by vm.currentStoreId.collectAsStateWithLifecycle()
     var adding by remember { mutableStateOf(false) }
@@ -102,7 +110,12 @@ fun StoresScreen(onBack: () -> Unit, onOpenStore: (Long) -> Unit) {
                                     Column(Modifier.weight(1f)) {
                                         Text(store.name, style = MaterialTheme.typography.titleSmall)
                                         Text(
-                                            listOfNotNull(store.location, if (store.id == currentId) "Shopping here" else null).joinToString(" · ").ifEmpty { "Tap for details" },
+                                            listOfNotNull(
+                                                store.location,
+                                                store.region,
+                                                if (store.position == null) "No map location" else null,
+                                                if (store.id == currentId) "Shopping here" else null,
+                                            ).joinToString(" · ").ifEmpty { "Tap for details" },
                                             style = MaterialTheme.typography.bodySmall,
                                             color = MaterialTheme.colorScheme.onSurfaceVariant,
                                         )
@@ -128,7 +141,12 @@ fun StoresScreen(onBack: () -> Unit, onOpenStore: (Long) -> Unit) {
     }
 
     if (adding) {
-        StoreDialog(title = "New store", onDismiss = { adding = false }, onConfirm = { n, l -> vm.add(n, l); adding = false })
+        StoreDialog(
+            title = "New store",
+            onDismiss = { adding = false },
+            onConfirm = { n, l, pin -> vm.add(n, l, pin); adding = false },
+            offerPinHere = true,
+        )
     }
     editing?.let { store ->
         StoreDialog(
@@ -136,7 +154,7 @@ fun StoresScreen(onBack: () -> Unit, onOpenStore: (Long) -> Unit) {
             initialName = store.name,
             initialLocation = store.location.orEmpty(),
             onDismiss = { editing = null },
-            onConfirm = { n, l -> vm.update(store.copy(name = n, location = l)); editing = null },
+            onConfirm = { n, l, _ -> vm.update(store.copy(name = n, location = l)); editing = null },
         )
     }
     deleting?.let { store ->

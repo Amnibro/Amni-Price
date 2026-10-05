@@ -6,6 +6,7 @@ import androidx.camera.core.ExperimentalGetImage
 import androidx.camera.core.ImageAnalysis
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
+import com.amniscient.price.data.LocationService
 import com.amniscient.price.data.PriceEntity
 import com.amniscient.price.data.PriceInput
 import com.amniscient.price.data.PriceRepository
@@ -15,6 +16,7 @@ import com.amniscient.price.data.SettingsStore
 import com.amniscient.price.data.StoreEntity
 import com.amniscient.price.domain.Money
 import com.amniscient.price.domain.PriceParser
+import com.amniscient.price.domain.RegionalPrices
 import com.amniscient.price.domain.ReceiptParser
 import com.amniscient.price.domain.RowGrouper
 import com.amniscient.price.scan.ScanSession
@@ -26,6 +28,7 @@ import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
+import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
@@ -44,6 +47,8 @@ data class ScanUiState(
     val savedThisSession: Int = 0,
     /** Increments whenever something new is recognized; drives haptics. */
     val detectionTick: Int = 0,
+    /** A saved store you appear to be standing in. */
+    val suggestedStore: StoreEntity? = null,
 )
 
 class ScanViewModel(
@@ -51,6 +56,7 @@ class ScanViewModel(
     private val settings: SettingsStore,
     private val vision: VisionEngine,
     private val session: ScanSession,
+    private val location: LocationService,
 ) : ViewModel() {
 
     private val _state = MutableStateFlow(ScanUiState())
@@ -144,9 +150,31 @@ class ScanViewModel(
         viewModelScope.launch { _state.update { it.copy(lastHere = repository.lastPriceAt(productId, id)) } }
     }
 
-    fun addStore(name: String, location: String?) {
-        viewModelScope.launch { settings.setCurrentStore(repository.addStore(name, location)) }
+    fun addStore(name: String, branch: String?, pinHere: Boolean) {
+        viewModelScope.launch {
+            val pin = if (pinHere) location.hereWithRegion() else null
+            settings.setCurrentStore(repository.addStore(name, branch, pin?.first, pin?.second))
+        }
     }
+
+    /** If you're standing in a saved store other than the current one, suggest switching to it. */
+    fun detectNearbyStore() {
+        if (!location.hasPermission()) return
+        viewModelScope.launch {
+            val here = location.current() ?: return@launch
+            val stores = repository.allStores.first()
+            val near = RegionalPrices.nearest(here, stores, NEARBY_METERS) { it.position }
+            _state.update { it.copy(suggestedStore = near?.takeIf { s -> s.id != currentStoreId.value }) }
+        }
+    }
+
+    fun acceptSuggestion() {
+        val s = _state.value.suggestedStore ?: return
+        selectStore(s.id)
+        _state.update { it.copy(suggestedStore = null) }
+    }
+
+    fun dismissSuggestion() = _state.update { it.copy(suggestedStore = null) }
 
     fun dismissMessage() = _state.update { it.copy(message = null) }
 
@@ -217,5 +245,6 @@ class ScanViewModel(
 
     private companion object {
         const val FRAME_INTERVAL_MS = 350L
+        const val NEARBY_METERS = 250.0
     }
 }

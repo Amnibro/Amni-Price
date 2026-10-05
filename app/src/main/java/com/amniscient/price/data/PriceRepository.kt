@@ -4,12 +4,16 @@ import androidx.room.withTransaction
 import com.amniscient.price.domain.Categorizer
 import com.amniscient.price.domain.Category
 import com.amniscient.price.domain.Csv
+import com.amniscient.price.domain.GeoStoreValue
+import com.amniscient.price.domain.LatLng
 import com.amniscient.price.domain.LatestPrice
 import com.amniscient.price.domain.Money
 import com.amniscient.price.domain.Observation
 import com.amniscient.price.domain.PriceChange
 import com.amniscient.price.domain.PriceInsights
 import com.amniscient.price.domain.ProductMatcher
+import com.amniscient.price.domain.RegionStat
+import com.amniscient.price.domain.RegionalPrices
 import com.amniscient.price.domain.StoreRanker
 import com.amniscient.price.domain.StoreScore
 import com.amniscient.price.domain.TripItem
@@ -70,6 +74,36 @@ data class StoreDetail(
     val visits: Int,
 )
 
+/** One store on the price map. [value] is a price in cents, or a price index in basket mode. */
+data class MapPoint(
+    val store: StoreEntity,
+    val value: Double,
+    val priceCents: Long?,
+    val observedAt: Long?,
+    val weight: Int = 1,
+)
+
+data class MapData(
+    val located: List<MapPoint>,
+    /** Stores with a price but no map position yet. */
+    val unlocated: List<MapPoint>,
+    val regions: List<RegionStat>,
+) {
+    val cheapest: Double? get() = located.minOfOrNull { it.value }
+
+    fun geoValues(): List<GeoStoreValue> = located.map {
+        GeoStoreValue(it.store.id, it.store.position!!, it.store.region, it.value, it.weight)
+    }
+
+    companion object {
+        fun of(points: List<MapPoint>): MapData {
+            val (located, unlocated) = points.partition { it.store.position != null }
+            val data = MapData(located, unlocated, emptyList())
+            return data.copy(regions = RegionalPrices.byRegion(data.geoValues()))
+        }
+    }
+}
+
 data class ListEntry(val item: ShoppingItemEntity, val product: ProductEntity?, val cheapestCents: Long?, val cheapestStore: String?)
 
 data class ShoppingPlan(val entries: List<ListEntry>, val plan: TripPlan, val storeNames: Map<Long, String>)
@@ -106,7 +140,7 @@ class PriceRepository(private val db: AppDatabase) {
 
     val productSummaries: Flow<List<ProductSummary>> =
         combine(products.observeAll(), latestDistinct, stores.observeAll()) { prods, latest, storeList ->
-            val storeNames = storeList.associate { it.id to it.name }
+            val storeNames = storeList.associate { it.id to it.displayName }
             val byProduct = latest.groupBy { it.productId }
             prods.map { product ->
                 val entries = byProduct[product.id].orEmpty()
@@ -137,7 +171,7 @@ class PriceRepository(private val db: AppDatabase) {
             latestDistinct,
         ) { prods, storeList, all, latest ->
             val productNames = prods.associate { it.id to it.name }
-            val storeNames = storeList.associate { it.id to it.name }
+            val storeNames = storeList.associate { it.id to it.displayName }
             val changes = PriceInsights.latestChanges(all.map { Observation(it.productId, it.storeId, it.priceCents, it.observedAt) })
             Insights(
                 productCount = prods.size,
@@ -172,6 +206,23 @@ class PriceRepository(private val db: AppDatabase) {
                 .latestChanges(history.map { Observation(it.price.productId, it.price.storeId, it.price.priceCents, it.price.observedAt) })
                 .associateBy { it.storeId }
             ProductDetail(product, byStore, history, changes)
+        }
+
+    /** Everything the price map needs for one product: located stores, their latest prices, regions. */
+    fun productMap(productId: Long): Flow<MapData> =
+        combine(latestDistinct, stores.observeAll()) { latest, storeList ->
+            val byId = storeList.associateBy { it.id }
+            val points = latest.filter { it.productId == productId }.mapNotNull { p ->
+                val store = byId[p.storeId] ?: return@mapNotNull null
+                MapPoint(store, p.priceCents.toDouble(), p.priceCents, p.observedAt)
+            }
+            MapData.of(points)
+        }
+
+    /** The whole-basket view: every located store's price index (1.00 = always cheapest). */
+    val basketMap: Flow<MapData> =
+        combine(latestDistinct, stores.observeAll()) { latest, storeList ->
+            MapData.of(rank(latest, storeList).map { r -> MapPoint(r.store, r.score.index, null, null, r.score.comparedProducts) })
         }
 
     fun storeDetail(storeId: Long): Flow<StoreDetail?> =
@@ -217,9 +268,45 @@ class PriceRepository(private val db: AppDatabase) {
 
     // ---- Stores ----
 
-    suspend fun addStore(name: String, location: String? = null): Long {
-        stores.findByName(name.trim())?.let { return it.id }
-        return stores.insert(StoreEntity(name = name.trim(), location = location?.trim()?.ifEmpty { null }))
+    /**
+     * Adds a store, or returns the existing one with the same name *and* branch label, so
+     * "Kroger · Main St" and "Kroger · Westerville" stay separate stores.
+     */
+    suspend fun addStore(
+        name: String,
+        location: String? = null,
+        position: LatLng? = null,
+        region: String? = null,
+    ): Long {
+        val branch = location?.trim()?.ifEmpty { null }
+        stores.findAllByName(name.trim())
+            .firstOrNull { it.location.orEmpty().equals(branch.orEmpty(), ignoreCase = true) }
+            ?.let { existing ->
+                if (position != null && existing.position == null) setStoreLocation(existing.id, position, region)
+                return existing.id
+            }
+        return stores.insert(
+            StoreEntity(
+                name = name.trim(),
+                location = branch,
+                latitude = position?.lat,
+                longitude = position?.lng,
+                region = region?.trim()?.ifEmpty { null },
+            ),
+        )
+    }
+
+    suspend fun storesNamed(name: String): List<StoreEntity> = stores.findAllByName(name.trim())
+
+    suspend fun setStoreLocation(storeId: Long, position: LatLng?, region: String?) {
+        val store = stores.getById(storeId) ?: return
+        stores.update(
+            store.copy(
+                latitude = position?.lat,
+                longitude = position?.lng,
+                region = region?.trim()?.ifEmpty { null } ?: store.region,
+            ),
+        )
     }
 
     suspend fun updateStore(store: StoreEntity) = stores.update(store)
@@ -306,7 +393,7 @@ class PriceRepository(private val db: AppDatabase) {
     val shoppingPlan: Flow<ShoppingPlan> =
         combine(shopping.observeAll(), products.observeAll(), latestDistinct, stores.observeAll()) { items, prods, latest, storeList ->
             val productById = prods.associateBy { it.id }
-            val storeNames = storeList.associate { it.id to it.name }
+            val storeNames = storeList.associate { it.id to it.displayName }
             val priceMap: Map<Long, Map<Long, Long>> = latest.groupBy { it.productId }
                 .mapValues { (_, list) -> list.associate { it.storeId to it.priceCents } }
             val entries = items.map { item ->
@@ -353,6 +440,9 @@ class PriceRepository(private val db: AppDatabase) {
                 product.category.name,
                 store.name,
                 store.location.orEmpty(),
+                store.latitude?.toString().orEmpty(),
+                store.longitude?.toString().orEmpty(),
+                store.region.orEmpty(),
                 Money.toPlain(p.priceCents),
                 Instant.ofEpochMilli(p.observedAt).toString(),
                 p.source.name,
@@ -379,7 +469,10 @@ class PriceRepository(private val db: AppDatabase) {
                 ?.let { runCatching { Instant.parse(it).toEpochMilli() }.getOrNull() }
                 ?: System.currentTimeMillis()
             val category = row.col("category")?.let { runCatching { Category.valueOf(it) }.getOrNull() }
-            val storeId = addStore(storeName, row.col("location"))
+            val lat = row.col("latitude")?.toDoubleOrNull()
+            val lng = row.col("longitude")?.toDoubleOrNull()
+            val position = if (lat != null && lng != null && lat in -90.0..90.0 && lng in -180.0..180.0) LatLng(lat, lng) else null
+            val storeId = addStore(storeName, row.col("location"), position, row.col("region"))
             val product = findOrCreateProduct(productName, row.col("barcode"), row.col("size"), row.col("brand"), category)
             if (prices.countExact(product.id, storeId, observedAt, cents) == 0) {
                 prices.insert(
@@ -400,7 +493,7 @@ class PriceRepository(private val db: AppDatabase) {
 
     companion object {
         val CSV_HEADER = listOf(
-            "product", "barcode", "brand", "size", "category", "store", "location",
+            "product", "barcode", "brand", "size", "category", "store", "location", "latitude", "longitude", "region",
             "price", "observed_at", "source", "on_sale",
         )
     }

@@ -2,6 +2,7 @@ package com.amniscient.price
 
 import android.content.Context
 import com.amniscient.price.data.AppDatabase
+import com.amniscient.price.data.LocationService
 import com.amniscient.price.data.PriceRepository
 import com.amniscient.price.data.SettingsStore
 import com.amniscient.price.scan.ScanSession
@@ -13,5 +14,6 @@ class AppContainer(context: Context) {
     val repository = PriceRepository(database)
     val settings = SettingsStore(context)
     val vision by lazy { VisionEngine() }
+    val location = LocationService(context)
     val scanSession = ScanSession()
 }

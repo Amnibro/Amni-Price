@@ -47,6 +47,7 @@ import androidx.compose.ui.unit.dp
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.lifecycle.viewModelScope
+import com.amniscient.price.data.LocationService
 import com.amniscient.price.data.PriceInput
 import com.amniscient.price.data.PriceRepository
 import com.amniscient.price.data.PriceSource
@@ -95,6 +96,7 @@ class ReceiptReviewViewModel(
     private val repository: PriceRepository,
     private val settings: SettingsStore,
     session: ScanSession,
+    private val location: LocationService,
 ) : ViewModel() {
     private val receipt = session.pendingReceipt.also { session.pendingReceipt = null }
 
@@ -116,10 +118,12 @@ class ReceiptReviewViewModel(
         val guess = detectedStore?.let(::normalizeName)
         if (!guess.isNullOrBlank()) {
             viewModelScope.launch {
-                val match = repository.allStores.first().firstOrNull { store ->
+                val candidates = repository.allStores.first().filter { store ->
                     val n = normalizeName(store.name)
                     n.isNotBlank() && (guess.contains(n) || n.contains(guess))
                 }
+                // Several branches of the chain: prefer the one you're shopping at.
+                val match = candidates.firstOrNull { it.id == storeId } ?: candidates.firstOrNull()
                 if (match != null) {
                     storeId = match.id
                     storeMatched = true
@@ -143,9 +147,10 @@ class ReceiptReviewViewModel(
     val canSave: Boolean
         get() = storeId != null && rows.any { it.name.isNotBlank() && Money.parse(it.price) != null }
 
-    fun addStore(name: String, location: String?) {
+    fun addStore(name: String, branch: String?, pinHere: Boolean) {
         viewModelScope.launch {
-            storeId = repository.addStore(name, location)
+            val pin = if (pinHere) location.hereWithRegion() else null
+            storeId = repository.addStore(name, branch, pin?.first, pin?.second)
             storeMatched = true
         }
     }
@@ -185,7 +190,7 @@ class ReceiptReviewViewModel(
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun ReceiptReviewScreen(onDone: () -> Unit) {
-    val vm = appViewModel { ReceiptReviewViewModel(it.repository, it.settings, it.scanSession) }
+    val vm = appViewModel { ReceiptReviewViewModel(it.repository, it.settings, it.scanSession, it.location) }
     val stores by vm.stores.collectAsStateWithLifecycle()
     var pickingDate by remember { mutableStateOf(false) }
 
@@ -208,7 +213,7 @@ fun ReceiptReviewScreen(onDone: () -> Unit) {
                     Row(horizontalArrangement = Arrangement.spacedBy(8.dp), verticalAlignment = Alignment.CenterVertically) {
                         val detected = vm.detectedStore
                         if (detected != null && !vm.storeMatched) {
-                            AssistChip(onClick = { vm.addStore(detected, null) }, label = { Text("Create \"$detected\"") })
+                            AssistChip(onClick = { vm.addStore(detected, null, false) }, label = { Text("Create \"$detected\"") })
                         }
                         AssistChip(
                             onClick = { pickingDate = true },

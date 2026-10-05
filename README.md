@@ -12,7 +12,7 @@ you can see which business really has the most affordable goods.
   <img src="app/screenshots/02_home.png" width="23%" />
   <img src="app/screenshots/06_product_detail.png" width="23%" />
   <img src="app/screenshots/09_shopping_list.png" width="23%" />
-  <img src="app/screenshots/11_receipt_review.png" width="23%" />
+  <img src="app/screenshots/13_map_product.png" width="23%" />
 </p>
 
 ## Features
@@ -42,6 +42,18 @@ you can see which business really has the most affordable goods.
 - **Auto categories.** Products are sorted into Produce, Dairy & eggs, Pantry and so on. Filter
   and sort the comparison by category, price gap, recency or name.
 
+**Map**
+- **Price map.** Pick any product and see every store's price pinned on the map, colored
+  against the cheapest (cheapest / within 10% / higher; the label always shows the number).
+  Areas are circled and ranked by average price ("Westerville $3.56 · cheapest area,
+  Columbus +18%, Dublin +23%"), and the cheapest stores are listed with their distance from you.
+- **Overall mode** ranks areas by the whole-basket store price index: where shopping is
+  cheapest in general, not only for one item.
+- **Store locations** come from "Pin to where I am" when you add a store, "I'm here now" on a
+  store page, or a drag-to-place map picker. The town is filled in automatically. Branches of
+  the same chain (Kroger · Main St vs. Kroger · Westerville) are kept separate.
+- **"You're at Aldi?"** The scanner suggests switching when you're standing in a saved store.
+
 **Act**
 - **Shopping list + trip planner.** Add items, linked to your products automatically. The
   planner finds the cheapest single store *and* the cheapest two-store split, groups the list
@@ -49,8 +61,9 @@ you can see which business really has the most affordable goods.
 - **Share** a product's prices as text, or **export/import CSV** to pool prices with family or a
   group.
 
-**Private by design.** OCR and barcode models ship inside the APK. No account, no network
-calls, no ads, no trackers. Data leaves the phone only when you export it.
+**Private by design.** OCR and barcode models ship inside the APK. No account, no ads, no
+trackers. Your prices and location never leave the phone unless you export them. The only
+network use is downloading map images for the area you're viewing.
 
 ## Design
 
@@ -71,7 +84,22 @@ Requirements: JDK 17+ and the Android SDK (platform 35). Android Studio works ou
 ./gradlew :app:recordRoborazziDebug # regenerate app/screenshots/ after UI changes
 ```
 
-Debug builds have **Settings → Load sample data** (four stores, eight weeks of prices) for
+### Map tiles (before publishing)
+
+The map uses OpenStreetMap data through [osmdroid](https://github.com/osmdroid/osmdroid), with
+no API key needed. By default it loads tiles from OpenStreetMap's public servers, which are for
+development and light use only ([tile usage policy](https://operations.osmfoundation.org/policies/tiles/)).
+Before a public release, point it at a tile provider you have an account with:
+
+```properties
+# gradle.properties or local.properties
+amni.mapTileUrl=https://api.maptiler.com/maps/streets-v2/256/{z}/{x}/{y}.png?key=YOUR_KEY
+amni.mapAttribution=© MapTiler © OpenStreetMap contributors
+```
+
+Tiles are recolored in-app to match the theme (`map/MapTiles.kt`), so any standard style works.
+
+Debug builds have **Settings → Load sample data** (seven stores in three towns, eight weeks of prices) for
 trying every feature without going shopping. CI (`.github/workflows/android.yml`) runs tests and
 lint and uploads the debug APK on every push.
 
@@ -88,10 +116,13 @@ app/src/main/java/com/amniscient/price/
 │   ├── UnitParser       sizes → normalized quantity, unit-price labels
 │   ├── StoreRanker      cheapest-store price index
 │   ├── PriceInsights    price changes, personal inflation, potential savings
+│   ├── RegionalPrices   price by area, cheapest nearby, price bands
+│   ├── Geo              distances, geohash cells
 │   └── TripPlanner      cheapest single store / multi-store split for a list
-├── data/        Room (stores, products, prices, shopping list), repository, settings, demo data
+├── data/        Room (stores, products, prices, shopping list), repository, settings, location, demo data
+├── map/         Map tile source + brand color filter
 ├── scan/        ML Kit wrapper (VisionEngine) and the scan → review hand-off
-└── ui/          Compose screens: home, scan, review, compare, stores, list, settings, onboarding
+└── ui/          Compose screens: home, scan, review, compare, map, stores, list, settings, onboarding
     ├── theme/       Amniscient colors, type, shapes
     └── components/  Panel, AmniTopBar, PriceText, TrendBadge, pickers…
 ```
@@ -107,13 +138,15 @@ app/src/main/java/com/amniscient/price/
 | Add a unit ("dozen") | `UnitParser` regex + `factor()` |
 | Swap the OCR engine | implement `analyze`/`readText` like `scan/VisionEngine.kt`; everything downstream uses `OcrLine` |
 | Add a screen | composable + ViewModel in `ui/`, route in `ui/AmniPriceRoot.kt`, dependencies via `appViewModel { … }`, a shot in `ScreenshotTest` |
-| Add a database field | `data/Entities.kt`, bump `AppDatabase.version`, add a `Migration` (see `MIGRATION_1_2`) |
+| Add a database field | `data/Entities.kt`, bump `AppDatabase.version`, add a `Migration`, extend `MigrationTest` |
+| Change how areas are grouped | `domain/RegionalPrices.regionKey` (town name, else ~5 km geohash cell) |
+| Change the map provider/look | `amni.mapTileUrl` + `map/MapTiles.filter` |
 | Community price sharing | build on `PriceRepository.exportCsv()` / `importCsv()`, or add a sync source beside it |
 
 ### Roadmap
 
 - Opt-in community price sharing so prices crowd-source across shoppers
-- GPS to auto-select the store you walk into
+- Crowd-sourced prices on the map, so areas you haven't shopped show up too
 - Price-drop alerts for items on your list
 - Online listings via the share sheet
 

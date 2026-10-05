@@ -31,6 +31,7 @@ import androidx.compose.ui.unit.dp
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.lifecycle.viewModelScope
+import com.amniscient.price.data.LocationService
 import com.amniscient.price.data.PriceEntity
 import com.amniscient.price.data.PriceInput
 import com.amniscient.price.data.PriceRepository
@@ -68,6 +69,7 @@ class ShelfReviewViewModel(
     private val repository: PriceRepository,
     private val settings: SettingsStore,
     session: ScanSession,
+    private val location: LocationService,
 ) : ViewModel() {
     private val draft = session.pendingShelf.also { session.pendingShelf = null }
 
@@ -126,8 +128,11 @@ class ShelfReviewViewModel(
     val priceCents: Long? get() = Money.parse(price)?.takeIf { it > 0 }
     val canSave: Boolean get() = name.isNotBlank() && priceCents != null && storeId != null
 
-    fun addStore(name: String, location: String?) {
-        viewModelScope.launch { storeId = repository.addStore(name, location) }
+    fun addStore(name: String, branch: String?, pinHere: Boolean) {
+        viewModelScope.launch {
+            val pin = if (pinHere) location.hereWithRegion() else null
+            storeId = repository.addStore(name, branch, pin?.first, pin?.second)
+        }
     }
 
     fun save(onDone: () -> Unit) {
@@ -155,7 +160,7 @@ class ShelfReviewViewModel(
 
 @Composable
 fun ShelfReviewScreen(onDone: () -> Unit) {
-    val vm = appViewModel { ShelfReviewViewModel(it.repository, it.settings, it.scanSession) }
+    val vm = appViewModel { ShelfReviewViewModel(it.repository, it.settings, it.scanSession, it.location) }
     val stores by vm.stores.collectAsStateWithLifecycle()
     val imperial = LocalUiPrefs.current.imperialUnits
 

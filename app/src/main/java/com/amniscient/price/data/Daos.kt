@@ -16,8 +16,11 @@ interface StoreDao {
     @Query("SELECT * FROM stores WHERE id = :id")
     fun observeById(id: Long): Flow<StoreEntity?>
 
-    @Query("SELECT * FROM stores WHERE name = :name COLLATE NOCASE LIMIT 1")
-    suspend fun findByName(name: String): StoreEntity?
+    @Query("SELECT * FROM stores WHERE name = :name COLLATE NOCASE")
+    suspend fun findAllByName(name: String): List<StoreEntity>
+
+    @Query("SELECT * FROM stores WHERE id = :id")
+    suspend fun getById(id: Long): StoreEntity?
 
     @Insert suspend fun insert(store: StoreEntity): Long
     @Update suspend fun update(store: StoreEntity)
@@ -57,14 +60,14 @@ interface PriceDao {
     @Delete suspend fun delete(price: PriceEntity)
 
     @Query(
-        """SELECT prices.*, stores.name AS storeName FROM prices
+        """SELECT prices.*, CASE WHEN stores.location IS NULL THEN stores.name ELSE stores.name || ' · ' || stores.location END AS storeName FROM prices
            JOIN stores ON stores.id = prices.storeId
            WHERE productId = :productId ORDER BY observedAt DESC""",
     )
     fun observeForProduct(productId: Long): Flow<List<PriceWithStore>>
 
     @Query(
-        """SELECT prices.*, products.name AS productName, stores.name AS storeName FROM prices
+        """SELECT prices.*, products.name AS productName, CASE WHEN stores.location IS NULL THEN stores.name ELSE stores.name || ' · ' || stores.location END AS storeName FROM prices
            JOIN products ON products.id = prices.productId
            JOIN stores ON stores.id = prices.storeId
            ORDER BY observedAt DESC, prices.id DESC LIMIT :limit""",
