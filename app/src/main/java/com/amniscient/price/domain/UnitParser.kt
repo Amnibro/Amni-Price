@@ -42,17 +42,25 @@ object UnitParser {
         return Quantity(amount * f, base, match.value.trim())
     }
 
-    /** "$0.25 / oz", "$0.88 / 100 ml", "$0.50 / ea". Imperial in the US, metric elsewhere. */
-    fun unitPriceLabel(priceCents: Long, quantity: Quantity, locale: Locale = Locale.getDefault()): String {
-        val imperial = locale.country == "US"
-        val (perAmount, label) = when (quantity.base) {
-            BaseUnit.GRAM -> if (imperial) 28.3495 to "oz" else 100.0 to "100 g"
-            BaseUnit.MILLILITER -> if (imperial) 29.5735 to "fl oz" else 100.0 to "100 ml"
-            BaseUnit.COUNT -> 1.0 to "ea"
+    /**
+     * "$0.25 / oz", "$1.06 / qt", "$0.88 / 100 ml", "$0.50 / ea". Steps up to a larger unit when the
+     * small one would round to a few cents (a gallon of milk per fl oz is useless for comparing).
+     */
+    fun unitPriceLabel(priceCents: Long, quantity: Quantity, imperial: Boolean = defaultImperial()): String {
+        val ladder: List<Pair<Double, String>> = when (quantity.base) {
+            BaseUnit.GRAM -> if (imperial) listOf(28.3495 to "oz", 453.592 to "lb") else listOf(100.0 to "100 g", 1000.0 to "kg")
+            BaseUnit.MILLILITER -> if (imperial) listOf(29.5735 to "fl oz", 946.353 to "qt") else listOf(100.0 to "100 ml", 1000.0 to "L")
+            BaseUnit.COUNT -> listOf(1.0 to "ea")
         }
+        val (perAmount, label) = ladder.firstOrNull { (amount, _) -> priceCents * amount / quantity.amount >= MIN_UNIT_CENTS }
+            ?: ladder.last()
         val cents = Math.round(priceCents * perAmount / quantity.amount)
         return "${Money.format(cents)} / $label"
     }
+
+    private const val MIN_UNIT_CENTS = 10
+
+    fun defaultImperial(locale: Locale = Locale.getDefault()): Boolean = locale.country in setOf("US", "LR", "MM")
 
     /** Price per base unit, used to compare different package sizes of the same product. */
     fun pricePerBase(priceCents: Long, quantity: Quantity): Double = priceCents / quantity.amount

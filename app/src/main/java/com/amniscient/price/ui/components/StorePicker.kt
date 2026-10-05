@@ -2,6 +2,7 @@ package com.amniscient.price.ui.components
 
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.Storefront
@@ -11,6 +12,7 @@ import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.ExposedDropdownMenuBox
 import androidx.compose.material3.ExposedDropdownMenuDefaults
 import androidx.compose.material3.Icon
+import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.MenuAnchorType
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Text
@@ -22,8 +24,9 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.text.input.KeyboardCapitalization
-import androidx.compose.foundation.text.KeyboardOptions
+import androidx.compose.ui.unit.dp
 import com.amniscient.price.data.StoreEntity
+import com.amniscient.price.ui.theme.Amni
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -46,9 +49,10 @@ fun StorePicker(
             readOnly = true,
             label = { Text(label) },
             placeholder = { Text("Choose a store") },
-            leadingIcon = { Icon(Icons.Default.Storefront, null) },
+            leadingIcon = { Icon(Icons.Default.Storefront, null, tint = Amni.palette.brass) },
             trailingIcon = { ExposedDropdownMenuDefaults.TrailingIcon(expanded) },
             singleLine = true,
+            shape = MaterialTheme.shapes.small,
             modifier = Modifier.menuAnchor(MenuAnchorType.PrimaryNotEditable).fillMaxWidth(),
         )
         ExposedDropdownMenu(expanded = expanded, onDismissRequest = { expanded = false }) {
@@ -87,6 +91,8 @@ fun StoreDialog(
     var location by remember { mutableStateOf(initialLocation) }
     AlertDialog(
         onDismissRequest = onDismiss,
+        shape = MaterialTheme.shapes.extraLarge,
+        containerColor = Amni.palette.panel,
         title = { Text(title) },
         text = {
             Column {
@@ -95,13 +101,16 @@ fun StoreDialog(
                     onValueChange = { name = it },
                     label = { Text("Name") },
                     singleLine = true,
+                    shape = MaterialTheme.shapes.small,
                     keyboardOptions = KeyboardOptions(capitalization = KeyboardCapitalization.Words),
                 )
                 OutlinedTextField(
                     value = location,
                     onValueChange = { location = it },
                     label = { Text("Location (optional)") },
+                    placeholder = { Text("e.g. Main St") },
                     singleLine = true,
+                    shape = MaterialTheme.shapes.small,
                     keyboardOptions = KeyboardOptions(capitalization = KeyboardCapitalization.Words),
                 )
             }

@@ -1,16 +1,27 @@
 package com.amniscient.price.data
 
 import androidx.room.withTransaction
+import com.amniscient.price.domain.Categorizer
+import com.amniscient.price.domain.Category
 import com.amniscient.price.domain.Csv
 import com.amniscient.price.domain.LatestPrice
 import com.amniscient.price.domain.Money
-import com.amniscient.price.domain.ReceiptItem
+import com.amniscient.price.domain.Observation
+import com.amniscient.price.domain.PriceChange
+import com.amniscient.price.domain.PriceInsights
+import com.amniscient.price.domain.ProductMatcher
 import com.amniscient.price.domain.StoreRanker
 import com.amniscient.price.domain.StoreScore
+import com.amniscient.price.domain.TripItem
+import com.amniscient.price.domain.TripPlan
+import com.amniscient.price.domain.TripPlanner
 import com.amniscient.price.domain.normalizeName
+import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.first
+import kotlinx.coroutines.flow.map
+import kotlinx.coroutines.withContext
 import java.time.Instant
 
 data class ProductSummary(
@@ -27,13 +38,41 @@ data class ProductSummary(
 
 data class RankedStore(val store: StoreEntity, val score: StoreScore)
 
-data class StorePrice(val storeName: String, val latest: PriceEntity)
+data class StorePrice(val storeId: Long, val storeName: String, val latest: PriceEntity)
 
 data class ProductDetail(
     val product: ProductEntity,
     val byStore: List<StorePrice>,
     val history: List<PriceWithStore>,
+    /** Latest change at each store (vs. the previous visit), if any. */
+    val changes: Map<Long, PriceChange>,
 )
+
+data class NamedChange(val change: PriceChange, val productName: String, val storeName: String)
+
+data class Insights(
+    val productCount: Int,
+    val storeCount: Int,
+    val priceCount: Int,
+    val potentialSavingsCents: Long,
+    val inflationPercent: Double?,
+    val changes: List<NamedChange>,
+    val topStore: RankedStore?,
+)
+
+data class StoreItem(val product: ProductEntity, val priceCents: Long, val observedAt: Long, val cheapestElsewhere: Long?)
+
+data class StoreDetail(
+    val store: StoreEntity,
+    val rank: Int?,
+    val score: StoreScore?,
+    val items: List<StoreItem>,
+    val visits: Int,
+)
+
+data class ListEntry(val item: ShoppingItemEntity, val product: ProductEntity?, val cheapestCents: Long?, val cheapestStore: String?)
+
+data class ShoppingPlan(val entries: List<ListEntry>, val plan: TripPlan, val storeNames: Map<Long, String>)
 
 /** Everything needed to record one observed price. */
 data class PriceInput(
@@ -47,19 +86,28 @@ data class PriceInput(
     val source: PriceSource = PriceSource.MANUAL,
     val observedAt: Long = System.currentTimeMillis(),
     val note: String? = null,
+    /** Attach to this existing product instead of looking one up by barcode/name. */
+    val productId: Long? = null,
+    /** Category for a newly created product; auto-detected when null. */
+    val category: Category? = null,
 )
 
 class PriceRepository(private val db: AppDatabase) {
     private val stores = db.storeDao()
     private val products = db.productDao()
     private val prices = db.priceDao()
+    private val shopping = db.shoppingDao()
 
     val allStores: Flow<List<StoreEntity>> = stores.observeAll()
+    val allProducts: Flow<List<ProductEntity>> = products.observeAll()
+
+    private val latestDistinct: Flow<List<PriceEntity>> =
+        prices.observeLatest().map { list -> list.distinctBy { it.productId to it.storeId } }
 
     val productSummaries: Flow<List<ProductSummary>> =
-        combine(products.observeAll(), prices.observeLatest(), stores.observeAll()) { prods, latest, storeList ->
+        combine(products.observeAll(), latestDistinct, stores.observeAll()) { prods, latest, storeList ->
             val storeNames = storeList.associate { it.id to it.name }
-            val byProduct = latest.distinctBy { it.productId to it.storeId }.groupBy { it.productId }
+            val byProduct = latest.groupBy { it.productId }
             prods.map { product ->
                 val entries = byProduct[product.id].orEmpty()
                 val cheapest = entries.minByOrNull { it.priceCents }
@@ -75,14 +123,42 @@ class PriceRepository(private val db: AppDatabase) {
         }
 
     val storeRanking: Flow<List<RankedStore>> =
-        combine(prices.observeLatest(), stores.observeAll()) { latest, storeList ->
-            val byId = storeList.associateBy { it.id }
-            StoreRanker.rank(
-                latest.distinctBy { it.productId to it.storeId }
-                    .map { LatestPrice(it.productId, it.storeId, it.priceCents) },
-            )
-                .mapNotNull { score -> byId[score.storeId]?.let { RankedStore(it, score) } }
+        combine(latestDistinct, stores.observeAll()) { latest, storeList ->
+            rank(latest, storeList)
         }
+
+    val recentPrices: Flow<List<PriceRow>> = prices.observeRecent(12)
+
+    val insights: Flow<Insights> =
+        combine(
+            products.observeAll(),
+            stores.observeAll(),
+            prices.observeAll(),
+            latestDistinct,
+        ) { prods, storeList, all, latest ->
+            val productNames = prods.associate { it.id to it.name }
+            val storeNames = storeList.associate { it.id to it.name }
+            val changes = PriceInsights.latestChanges(all.map { Observation(it.productId, it.storeId, it.priceCents, it.observedAt) })
+            Insights(
+                productCount = prods.size,
+                storeCount = storeList.size,
+                priceCount = all.size,
+                potentialSavingsCents = PriceInsights.potentialSavings(latest.map { LatestPrice(it.productId, it.storeId, it.priceCents) }),
+                inflationPercent = PriceInsights.personalInflation(changes),
+                changes = changes.mapNotNull { c ->
+                    val p = productNames[c.productId] ?: return@mapNotNull null
+                    val s = storeNames[c.storeId] ?: return@mapNotNull null
+                    NamedChange(c, p, s)
+                },
+                topStore = rank(latest, storeList).firstOrNull(),
+            )
+        }
+
+    private fun rank(latest: List<PriceEntity>, storeList: List<StoreEntity>): List<RankedStore> {
+        val byId = storeList.associateBy { it.id }
+        return StoreRanker.rank(latest.map { LatestPrice(it.productId, it.storeId, it.priceCents) })
+            .mapNotNull { score -> byId[score.storeId]?.let { RankedStore(it, score) } }
+    }
 
     fun productDetail(productId: Long): Flow<ProductDetail?> =
         combine(products.observeById(productId), prices.observeForProduct(productId)) { product, history ->
@@ -90,9 +166,36 @@ class PriceRepository(private val db: AppDatabase) {
             val byStore = history
                 .groupBy { it.price.storeId }
                 .map { (_, list) -> list.maxBy { it.price.observedAt } }
-                .map { StorePrice(it.storeName, it.price) }
+                .map { StorePrice(it.price.storeId, it.storeName, it.price) }
                 .sortedBy { it.latest.priceCents }
-            ProductDetail(product, byStore, history)
+            val changes = PriceInsights
+                .latestChanges(history.map { Observation(it.price.productId, it.price.storeId, it.price.priceCents, it.price.observedAt) })
+                .associateBy { it.storeId }
+            ProductDetail(product, byStore, history, changes)
+        }
+
+    fun storeDetail(storeId: Long): Flow<StoreDetail?> =
+        combine(stores.observeById(storeId), latestDistinct, products.observeAll(), storeRanking, prices.observeAll()) {
+                store, latest, prods, ranking, all ->
+            store ?: return@combine null
+            val productById = prods.associateBy { it.id }
+            val byProduct = latest.groupBy { it.productId }
+            val items = latest.filter { it.storeId == storeId }.mapNotNull { p ->
+                val product = productById[p.productId] ?: return@mapNotNull null
+                val elsewhere = byProduct[p.productId].orEmpty().filter { it.storeId != storeId }.minOfOrNull { it.priceCents }
+                StoreItem(product, p.priceCents, p.observedAt, elsewhere)
+            }.sortedBy { it.product.name.lowercase() }
+            val rankIndex = ranking.indexOfFirst { it.store.id == storeId }
+            val visits = all.filter { it.storeId == storeId }
+                .map { java.time.Instant.ofEpochMilli(it.observedAt).atZone(java.time.ZoneId.systemDefault()).toLocalDate() }
+                .distinct().size
+            StoreDetail(
+                store = store,
+                rank = rankIndex.takeIf { it >= 0 }?.plus(1),
+                score = ranking.getOrNull(rankIndex)?.score,
+                items = items,
+                visits = visits,
+            )
         }
 
     suspend fun findByBarcode(barcode: String): ProductEntity? = products.findByBarcode(barcode)
@@ -101,6 +204,16 @@ class PriceRepository(private val db: AppDatabase) {
         val product = products.findByBarcode(barcode) ?: return null
         return productSummaries.first().firstOrNull { it.product.id == product.id }
     }
+
+    /** Best fuzzy match among saved products, for receipt lines and typed shopping-list items. */
+    suspend fun matchProduct(name: String, threshold: Double = ProductMatcher.DEFAULT_THRESHOLD): Pair<ProductEntity, Double>? =
+        withContext(Dispatchers.Default) {
+            val all = products.getAll()
+            all.firstOrNull { it.normalizedName == normalizeName(name) }?.let { return@withContext it to 1.0 }
+            ProductMatcher.best(name, all, threshold) { it.name }
+        }
+
+    suspend fun lastPriceAt(productId: Long, storeId: Long): PriceEntity? = prices.latestAt(productId, storeId)
 
     // ---- Stores ----
 
@@ -115,7 +228,8 @@ class PriceRepository(private val db: AppDatabase) {
     // ---- Prices ----
 
     suspend fun recordPrice(input: PriceInput): Long = db.withTransaction {
-        val product = findOrCreateProduct(input.productName, input.barcode, input.sizeText, input.brand)
+        val product = input.productId?.let { products.getById(it) }
+            ?: findOrCreateProduct(input.productName, input.barcode, input.sizeText, input.brand, input.category)
         prices.insert(
             PriceEntity(
                 productId = product.id,
@@ -129,35 +243,38 @@ class PriceRepository(private val db: AppDatabase) {
         )
     }
 
-    suspend fun recordReceipt(storeId: Long, items: List<ReceiptItem>, observedAt: Long = System.currentTimeMillis()) {
-        db.withTransaction {
-            items.forEach { item ->
-                recordPrice(
-                    PriceInput(
-                        productName = item.name,
-                        storeId = storeId,
-                        priceCents = item.unitPriceCents,
-                        onSale = item.discounted,
-                        source = PriceSource.RECEIPT,
-                        observedAt = observedAt,
-                    ),
-                )
-            }
-        }
+    /** Saves several observations atomically (e.g. every line of a receipt). */
+    suspend fun recordAll(inputs: List<PriceInput>) = db.withTransaction { inputs.forEach { recordPrice(it) } }
+
+    /** True if this exact price was saved for this product at this store in the last [windowMs]. */
+    suspend fun isRecentDuplicate(productName: String, barcode: String?, storeId: Long, priceCents: Long, windowMs: Long = 15 * 60_000): Boolean {
+        val product = barcode?.takeIf { it.isNotBlank() }?.let { products.findByBarcode(it) }
+            ?: products.findByNormalizedName(normalizeName(productName))
+            ?: return false
+        val last = prices.latestAt(product.id, storeId) ?: return false
+        return last.priceCents == priceCents && System.currentTimeMillis() - last.observedAt < windowMs
     }
 
     suspend fun deletePrice(price: PriceEntity) = prices.delete(price)
+
+    /** Undo for [deletePrice]: re-inserts the row with its original id. */
+    suspend fun restorePrice(price: PriceEntity) {
+        prices.insert(price)
+    }
 
     suspend fun updateProduct(product: ProductEntity) =
         products.update(product.copy(normalizedName = normalizeName(product.name)))
 
     suspend fun deleteProduct(product: ProductEntity) = products.delete(product)
 
+    suspend fun clearAll() = withContext(Dispatchers.IO) { db.clearAllTables() }
+
     private suspend fun findOrCreateProduct(
         name: String,
         barcode: String?,
         sizeText: String?,
         brand: String?,
+        category: Category? = null,
     ): ProductEntity {
         val code = barcode?.trim()?.ifEmpty { null }
         val normalized = normalizeName(name)
@@ -179,15 +296,51 @@ class PriceRepository(private val db: AppDatabase) {
             barcode = code,
             sizeText = sizeText?.ifBlank { null },
             brand = brand?.ifBlank { null },
+            category = category ?: Categorizer.categorize(name),
         )
         return product.copy(id = products.insert(product))
     }
+
+    // ---- Shopping list ----
+
+    val shoppingPlan: Flow<ShoppingPlan> =
+        combine(shopping.observeAll(), products.observeAll(), latestDistinct, stores.observeAll()) { items, prods, latest, storeList ->
+            val productById = prods.associateBy { it.id }
+            val storeNames = storeList.associate { it.id to it.name }
+            val priceMap: Map<Long, Map<Long, Long>> = latest.groupBy { it.productId }
+                .mapValues { (_, list) -> list.associate { it.storeId to it.priceCents } }
+            val entries = items.map { item ->
+                val product = item.productId?.let(productById::get)
+                val cheapest = product?.let { p -> latest.filter { it.productId == p.id }.minByOrNull { it.priceCents } }
+                ListEntry(item, product, cheapest?.priceCents, cheapest?.let { storeNames[it.storeId] })
+            }
+            val open = items.filterNot { it.checked }.map { TripItem(it.id, it.productId, it.quantity) }
+            ShoppingPlan(entries, TripPlanner.plan(open, priceMap), storeNames)
+        }
+
+    /** Adds a typed item, linking it to a saved product when the name matches one. */
+    suspend fun addToList(name: String, productId: Long? = null, quantity: Int = 1) {
+        val linked = productId ?: matchProduct(name, threshold = 0.75)?.first?.id
+        if (linked != null) {
+            shopping.findOpenForProduct(linked)?.let { existing ->
+                shopping.update(existing.copy(quantity = existing.quantity + quantity))
+                return
+            }
+        }
+        val display = linked?.let { products.getById(it)?.name } ?: name.trim()
+        shopping.insert(ShoppingItemEntity(name = display, productId = linked, quantity = quantity))
+    }
+
+    suspend fun updateListItem(item: ShoppingItemEntity) = shopping.update(item)
+    suspend fun deleteListItem(item: ShoppingItemEntity) = shopping.delete(item)
+    suspend fun restoreListItem(item: ShoppingItemEntity) { shopping.insert(item) }
+    suspend fun clearCheckedItems() = shopping.clearChecked()
 
     // ---- CSV import / export (share price lists with friends, back up, seed a community DB) ----
 
     suspend fun exportCsv(): String {
         val storeById = stores.observeAll().first().associateBy { it.id }
-        val productById = products.observeAll().first().associateBy { it.id }
+        val productById = products.getAll().associateBy { it.id }
         val rows = mutableListOf(CSV_HEADER)
         prices.getAll().forEach { p ->
             val product = productById[p.productId] ?: return@forEach
@@ -197,6 +350,7 @@ class PriceRepository(private val db: AppDatabase) {
                 product.barcode.orEmpty(),
                 product.brand.orEmpty(),
                 product.sizeText.orEmpty(),
+                product.category.name,
                 store.name,
                 store.location.orEmpty(),
                 Money.toPlain(p.priceCents),
@@ -224,8 +378,9 @@ class PriceRepository(private val db: AppDatabase) {
             val observedAt = row.col("observed_at")
                 ?.let { runCatching { Instant.parse(it).toEpochMilli() }.getOrNull() }
                 ?: System.currentTimeMillis()
+            val category = row.col("category")?.let { runCatching { Category.valueOf(it) }.getOrNull() }
             val storeId = addStore(storeName, row.col("location"))
-            val product = findOrCreateProduct(productName, row.col("barcode"), row.col("size"), row.col("brand"))
+            val product = findOrCreateProduct(productName, row.col("barcode"), row.col("size"), row.col("brand"), category)
             if (prices.countExact(product.id, storeId, observedAt, cents) == 0) {
                 prices.insert(
                     PriceEntity(
@@ -245,7 +400,7 @@ class PriceRepository(private val db: AppDatabase) {
 
     companion object {
         val CSV_HEADER = listOf(
-            "product", "barcode", "brand", "size", "store", "location",
+            "product", "barcode", "brand", "size", "category", "store", "location",
             "price", "observed_at", "source", "on_sale",
         )
     }

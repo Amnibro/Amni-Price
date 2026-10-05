@@ -1,7 +1,11 @@
 package com.amniscient.price.ui.scan
 
+import android.annotation.SuppressLint
+import android.view.MotionEvent
+import android.view.ScaleGestureDetector
 import androidx.camera.core.Camera
 import androidx.camera.core.CameraSelector
+import androidx.camera.core.FocusMeteringAction
 import androidx.camera.core.ImageAnalysis
 import androidx.camera.core.ImageCapture
 import androidx.camera.core.Preview
@@ -16,13 +20,20 @@ import androidx.compose.ui.viewinterop.AndroidView
 import androidx.core.content.ContextCompat
 import androidx.lifecycle.compose.LocalLifecycleOwner
 import java.util.concurrent.Executors
+import java.util.concurrent.TimeUnit
 
+/**
+ * CameraX preview + live analysis + still capture, with tap-to-focus and pinch-to-zoom.
+ * [onTapFocus] reports where the user tapped (in view pixels) so the UI can draw a focus ring.
+ */
+@SuppressLint("ClickableViewAccessibility")
 @Composable
 fun CameraPreview(
     analyzer: ImageAnalysis.Analyzer,
     imageCapture: ImageCapture,
     onCamera: (Camera) -> Unit,
     modifier: Modifier = Modifier,
+    onTapFocus: (x: Float, y: Float) -> Unit = { _, _ -> },
 ) {
     val context = LocalContext.current
     val lifecycleOwner = LocalLifecycleOwner.current
@@ -49,9 +60,29 @@ fun CameraPreview(
                 imageCapture,
             )
             onCamera(camera)
+
+            val scale = ScaleGestureDetector(context, object : ScaleGestureDetector.SimpleOnScaleGestureListener() {
+                override fun onScale(detector: ScaleGestureDetector): Boolean {
+                    val current = camera.cameraInfo.zoomState.value?.zoomRatio ?: 1f
+                    camera.cameraControl.setZoomRatio(current * detector.scaleFactor)
+                    return true
+                }
+            })
+            previewView.setOnTouchListener { _, event ->
+                scale.onTouchEvent(event)
+                if (event.action == MotionEvent.ACTION_UP && !scale.isInProgress && event.pointerCount == 1) {
+                    val point = previewView.meteringPointFactory.createPoint(event.x, event.y)
+                    camera.cameraControl.startFocusAndMetering(
+                        FocusMeteringAction.Builder(point).setAutoCancelDuration(4, TimeUnit.SECONDS).build(),
+                    )
+                    onTapFocus(event.x, event.y)
+                }
+                true
+            }
         }, ContextCompat.getMainExecutor(context))
 
         onDispose {
+            previewView.setOnTouchListener(null)
             runCatching { providerFuture.get().unbindAll() }
             analysisExecutor.shutdown()
         }

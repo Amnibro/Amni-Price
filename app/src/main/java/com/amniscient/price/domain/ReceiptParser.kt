@@ -1,5 +1,7 @@
 package com.amniscient.price.domain
 
+import java.time.LocalDate
+
 data class ReceiptItem(
     val name: String,
     val priceCents: Long,
@@ -14,6 +16,7 @@ data class ReceiptResult(
     val storeName: String?,
     val items: List<ReceiptItem>,
     val totalCents: Long?,
+    val date: LocalDate? = null,
 )
 
 object ReceiptParser {
@@ -82,7 +85,28 @@ object ReceiptParser {
             pendingQty = null
         }
 
-        return ReceiptResult(guessStore(rows), items, totalCents)
+        return ReceiptResult(guessStore(rows), items, totalCents, rows.firstNotNullOfOrNull(::parseDate))
+    }
+
+    private val usDate = Regex("""(?<![\d.])(\d{1,2})[/-](\d{1,2})[/-](\d{4}|\d{2})(?![\d.])""")
+    private val isoDate = Regex("""(?<!\d)(\d{4})-(\d{2})-(\d{2})(?!\d)""")
+
+    /** Receipt dates: 10/05/26, 10-05-2026, 2026-10-05, and day-first when the first number is > 12. */
+    internal fun parseDate(row: String, today: LocalDate = LocalDate.now()): LocalDate? {
+        val candidates = buildList {
+            isoDate.find(row)?.let { m -> add(Triple(m.groupValues[1].toInt(), m.groupValues[2].toInt(), m.groupValues[3].toInt())) }
+            usDate.find(row)?.let { m ->
+                var month = m.groupValues[1].toInt()
+                var day = m.groupValues[2].toInt()
+                val y = m.groupValues[3].toInt().let { if (it < 100) 2000 + it else it }
+                if (month > 12 && day <= 12) month = day.also { day = month }
+                add(Triple(y, month, day))
+            }
+        }
+        return candidates.firstNotNullOfOrNull { (y, mo, d) ->
+            runCatching { LocalDate.of(y, mo, d) }.getOrNull()
+                ?.takeIf { it.year >= 2000 && !it.isAfter(today.plusDays(1)) }
+        }
     }
 
     internal fun cleanName(name: String): String =

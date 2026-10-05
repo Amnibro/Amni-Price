@@ -1,10 +1,12 @@
 package com.amniscient.price.data
 
+import androidx.room.ColumnInfo
 import androidx.room.Embedded
 import androidx.room.Entity
 import androidx.room.ForeignKey
 import androidx.room.Index
 import androidx.room.PrimaryKey
+import com.amniscient.price.domain.Category
 
 @Entity(tableName = "stores")
 data class StoreEntity(
@@ -26,6 +28,7 @@ data class ProductEntity(
     val brand: String? = null,
     val sizeText: String? = null,
     val createdAt: Long = System.currentTimeMillis(),
+    @ColumnInfo(defaultValue = "OTHER") val category: Category = Category.OTHER,
 )
 
 enum class PriceSource { SHELF, RECEIPT, MANUAL, IMPORT }
@@ -51,5 +54,26 @@ data class PriceEntity(
 
 data class PriceWithStore(
     @Embedded val price: PriceEntity,
+    val storeName: String,
+)
+
+@Entity(
+    tableName = "shopping_list",
+    foreignKeys = [ForeignKey(ProductEntity::class, ["id"], ["productId"], onDelete = ForeignKey.SET_NULL)],
+    indices = [Index("productId")],
+)
+data class ShoppingItemEntity(
+    @PrimaryKey(autoGenerate = true) val id: Long = 0,
+    val name: String,
+    val productId: Long? = null,
+    val quantity: Int = 1,
+    val checked: Boolean = false,
+    val createdAt: Long = System.currentTimeMillis(),
+)
+
+/** A price joined with the names needed to display it. */
+data class PriceRow(
+    @Embedded val price: PriceEntity,
+    val productName: String,
     val storeName: String,
 )

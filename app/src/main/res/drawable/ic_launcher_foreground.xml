@@ -1,20 +1,22 @@
 <?xml version="1.0" encoding="utf-8"?>
-<!-- Price tag with a scan line. 108dp canvas, art kept inside the 66dp safe zone. -->
+<!-- Brass price tag with a lime scan line. 108dp canvas, art inside the 66dp safe zone. -->
 <vector xmlns:android="http://schemas.android.com/apk/res/android"
     android:width="108dp"
     android:height="108dp"
     android:viewportWidth="108"
     android:viewportHeight="108">
     <path
-        android:fillColor="#FFFFFFFF"
-        android:pathData="M36,34 L60,34 L76,54 L60,74 L36,74 Q32,74 32,70 L32,38 Q32,34 36,34 Z" />
+        android:strokeColor="#FFC89B4E"
+        android:strokeWidth="3.5"
+        android:strokeLineJoin="round"
+        android:pathData="M37,36 L59,36 L75,54 L59,72 L37,72 Q34,72 34,69 L34,39 Q34,36 37,36 Z" />
     <path
-        android:fillColor="#FF1B6B4A"
-        android:pathData="M63,54 m-4,0 a4,4 0,1 1,8 0 a4,4 0,1 1,-8 0" />
+        android:fillColor="#FFC89B4E"
+        android:pathData="M62,54 m-3.5,0 a3.5,3.5 0,1 1,7 0 a3.5,3.5 0,1 1,-7 0" />
     <path
-        android:fillColor="#FF1B6B4A"
-        android:pathData="M38,46 L54,46 L54,49 L38,49 Z M38,52.5 L50,52.5 L50,55.5 L38,55.5 Z M38,59 L54,59 L54,62 L38,62 Z" />
+        android:fillColor="#FFE7E4DC"
+        android:pathData="M40,45 L53,45 L53,48 L40,48 Z M40,60 L50,60 L50,63 L40,63 Z" />
     <path
-        android:fillColor="#FFF5C542"
-        android:pathData="M26,53 L82,53 L82,55 L26,55 Z" />
+        android:fillColor="#FFA3E635"
+        android:pathData="M27,52.5 L81,52.5 L81,55.5 L27,55.5 Z" />
 </vector>

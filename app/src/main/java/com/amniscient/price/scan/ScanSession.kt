@@ -10,10 +10,13 @@ data class ShelfDraft(
     val sizeText: String = "",
     val onSale: Boolean = false,
     val fromScan: Boolean = false,
+    val productId: Long? = null,
 )
 
-/** Hands scan results from the camera screen to the review screens. */
+/** Hands scan results between screens. */
 class ScanSession {
     var pendingShelf: ShelfDraft? = null
     var pendingReceipt: ReceiptResult? = null
+    /** Set by shortcuts (e.g. "Scan receipt" on Home) to open the camera in a given mode. */
+    var requestReceiptMode: Boolean = false
 }

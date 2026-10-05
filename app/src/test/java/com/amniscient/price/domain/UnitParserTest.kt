@@ -3,7 +3,6 @@ package com.amniscient.price.domain
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertNull
 import org.junit.Test
-import java.util.Locale
 
 class UnitParserTest {
     @Test fun parsesCommonUnits() {
@@ -21,8 +20,12 @@ class UnitParserTest {
 
     @Test fun unitPriceLabel() {
         val q = UnitParser.parse("500 g")!!
-        assertEquals(true, UnitParser.unitPriceLabel(250, q, Locale.UK).endsWith("/ 100 g"))
+        assertEquals(true, UnitParser.unitPriceLabel(250, q, imperial = false).endsWith("/ 100 g"))
         val each = UnitParser.parse("4 pack")!!
-        assertEquals(true, UnitParser.unitPriceLabel(400, each, Locale.US).endsWith("/ ea"))
+        assertEquals(true, UnitParser.unitPriceLabel(400, each, imperial = true).endsWith("/ ea"))
+        assertEquals(true, UnitParser.unitPriceLabel(340, UnitParser.parse("12 oz")!!, imperial = true).endsWith("/ oz"))
+        // A gallon of milk per fl oz would be ~3¢: step up to quarts / liters instead.
+        assertEquals(true, UnitParser.unitPriceLabel(338, UnitParser.parse("1 gal")!!, imperial = true).endsWith("/ qt"))
+        assertEquals(true, UnitParser.unitPriceLabel(338, UnitParser.parse("1 gal")!!, imperial = false).endsWith("/ L"))
     }
 }

@@ -1,59 +1,90 @@
 package com.amniscient.price.ui.review
 
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.imePadding
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
-import androidx.compose.foundation.lazy.itemsIndexed
+import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.automirrored.filled.ArrowBack
-import androidx.compose.material.icons.filled.Delete
+import androidx.compose.material.icons.filled.CalendarMonth
+import androidx.compose.material.icons.filled.Close
+import androidx.compose.material.icons.filled.Link
+import androidx.compose.material.icons.filled.LinkOff
 import androidx.compose.material3.AssistChip
 import androidx.compose.material3.Button
+import androidx.compose.material3.DatePicker
+import androidx.compose.material3.DatePickerDialog
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedTextField
-import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
-import androidx.compose.material3.TopAppBar
+import androidx.compose.material3.TextButton
+import androidx.compose.material3.rememberDatePickerState
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateListOf
 import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.text.input.KeyboardType
+import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.lifecycle.viewModelScope
+import com.amniscient.price.data.PriceInput
 import com.amniscient.price.data.PriceRepository
+import com.amniscient.price.data.PriceSource
 import com.amniscient.price.data.SettingsStore
 import com.amniscient.price.data.StoreEntity
 import com.amniscient.price.domain.Money
-import com.amniscient.price.domain.ReceiptItem
 import com.amniscient.price.domain.normalizeName
 import com.amniscient.price.scan.ScanSession
+import com.amniscient.price.ui.components.AmniTopBar
+import com.amniscient.price.ui.components.Eyebrow
+import com.amniscient.price.ui.components.Panel
+import com.amniscient.price.ui.components.PriceText
 import com.amniscient.price.ui.components.StorePicker
+import com.amniscient.price.ui.components.Tag
 import com.amniscient.price.ui.components.appViewModel
+import com.amniscient.price.ui.theme.Amni
+import com.amniscient.price.ui.theme.AmniText
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.launch
+import java.time.Instant
+import java.time.LocalDate
+import java.time.LocalTime
+import java.time.ZoneId
+import java.time.ZoneOffset
+import java.time.format.DateTimeFormatter
+import java.time.format.FormatStyle
 
 class ReceiptRow(name: String, price: String, val quantity: Int, val discounted: Boolean) {
     val id = nextId++
     var name by mutableStateOf(name)
     var price by mutableStateOf(price)
+    /** A saved product this line probably is (fuzzy match), and whether to attach to it. */
+    var matchId by mutableStateOf<Long?>(null)
+    var matchName by mutableStateOf<String?>(null)
+    var linked by mutableStateOf(false)
 
     private companion object {
         var nextId = 0L
@@ -69,6 +100,8 @@ class ReceiptReviewViewModel(
 
     val detectedStore: String? = receipt?.storeName
     val totalCents: Long? = receipt?.totalCents
+    val dateDetected = receipt?.date != null
+    var date by mutableStateOf(receipt?.date ?: LocalDate.now())
     val rows = mutableStateListOf<ReceiptRow>().apply {
         receipt?.items?.forEach { add(ReceiptRow(it.name, Money.toPlain(it.unitPriceCents), it.quantity, it.discounted)) }
     }
@@ -93,7 +126,19 @@ class ReceiptReviewViewModel(
                 }
             }
         }
+        // Receipts abbreviate ("GV WHL MLK"): link lines to products you've already saved.
+        viewModelScope.launch {
+            rows.toList().forEach { row ->
+                repository.matchProduct(row.name)?.let { (product, score) ->
+                    row.matchId = product.id
+                    row.matchName = product.name
+                    row.linked = score >= AUTO_LINK_SCORE
+                }
+            }
+        }
     }
+
+    val subtotalCents: Long get() = rows.sumOf { (Money.parse(it.price) ?: 0) * it.quantity }
 
     val canSave: Boolean
         get() = storeId != null && rows.any { it.name.isNotBlank() && Money.parse(it.price) != null }
@@ -107,15 +152,33 @@ class ReceiptReviewViewModel(
 
     fun save(onDone: () -> Unit) {
         val store = storeId ?: return
-        val items = rows.mapNotNull { row ->
+        val observedAt = if (date == LocalDate.now()) {
+            System.currentTimeMillis()
+        } else {
+            date.atTime(LocalTime.NOON).atZone(ZoneId.systemDefault()).toInstant().toEpochMilli()
+        }
+        val inputs = rows.mapNotNull { row ->
             val cents = Money.parse(row.price)?.takeIf { it > 0 } ?: return@mapNotNull null
-            if (row.name.isBlank()) null else ReceiptItem(row.name.trim(), cents, 1, row.discounted)
+            if (row.name.isBlank()) return@mapNotNull null
+            PriceInput(
+                productName = row.name.trim(),
+                storeId = store,
+                priceCents = cents,
+                onSale = row.discounted,
+                source = PriceSource.RECEIPT,
+                observedAt = observedAt,
+                productId = if (row.linked) row.matchId else null,
+            )
         }
         viewModelScope.launch {
-            repository.recordReceipt(store, items)
+            repository.recordAll(inputs)
             settings.setCurrentStore(store)
             onDone()
         }
+    }
+
+    private companion object {
+        const val AUTO_LINK_SCORE = 0.75
     }
 }
 
@@ -124,61 +187,127 @@ class ReceiptReviewViewModel(
 fun ReceiptReviewScreen(onDone: () -> Unit) {
     val vm = appViewModel { ReceiptReviewViewModel(it.repository, it.settings, it.scanSession) }
     val stores by vm.stores.collectAsStateWithLifecycle()
+    var pickingDate by remember { mutableStateOf(false) }
 
-    Column(Modifier.fillMaxSize()) {
-        TopAppBar(
-            title = { Text("Receipt · ${vm.rows.size} items") },
-            navigationIcon = { IconButton(onClick = onDone) { Icon(Icons.AutoMirrored.Filled.ArrowBack, "Back") } },
-        )
-        Column(Modifier.padding(horizontal = 16.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
-            StorePicker(
-                stores = stores,
-                selectedId = vm.storeId,
-                onSelect = { vm.storeId = it },
-                onAddStore = vm::addStore,
-                modifier = Modifier.fillMaxWidth(),
-            )
-            val detected = vm.detectedStore
-            if (detected != null && !vm.storeMatched) {
-                AssistChip(onClick = { vm.addStore(detected, null) }, label = { Text("Create store \"$detected\"") })
-            }
-            vm.totalCents?.let {
-                Text(
-                    "Receipt total ${Money.format(it)} (includes tax)",
-                    style = MaterialTheme.typography.bodySmall,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant,
-                )
-            }
-        }
+    Column(Modifier.fillMaxSize().imePadding()) {
+        AmniTopBar(title = "Receipt", eyebrow = "${vm.rows.size} items found", onBack = onDone)
         LazyColumn(
             Modifier.weight(1f),
-            contentPadding = androidx.compose.foundation.layout.PaddingValues(16.dp),
+            contentPadding = PaddingValues(16.dp),
             verticalArrangement = Arrangement.spacedBy(8.dp),
         ) {
-            itemsIndexed(vm.rows, key = { _, row -> row.id }) { _, row ->
-                Surface(tonalElevation = 1.dp, shape = MaterialTheme.shapes.medium) {
-                    Row(Modifier.padding(8.dp), verticalAlignment = Alignment.CenterVertically) {
-                        OutlinedTextField(
-                            value = row.name, onValueChange = { row.name = it },
-                            label = { Text(if (row.quantity > 1) "Item (×${row.quantity}, unit price)" else "Item") },
-                            singleLine = true,
-                            modifier = Modifier.weight(1f),
+            item {
+                Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                    StorePicker(
+                        stores = stores,
+                        selectedId = vm.storeId,
+                        onSelect = { vm.storeId = it },
+                        onAddStore = vm::addStore,
+                        modifier = Modifier.fillMaxWidth(),
+                    )
+                    Row(horizontalArrangement = Arrangement.spacedBy(8.dp), verticalAlignment = Alignment.CenterVertically) {
+                        val detected = vm.detectedStore
+                        if (detected != null && !vm.storeMatched) {
+                            AssistChip(onClick = { vm.addStore(detected, null) }, label = { Text("Create \"$detected\"") })
+                        }
+                        AssistChip(
+                            onClick = { pickingDate = true },
+                            leadingIcon = { Icon(Icons.Default.CalendarMonth, null, Modifier.size(16.dp)) },
+                            label = { Text(vm.date.format(DateTimeFormatter.ofLocalizedDate(FormatStyle.MEDIUM))) },
                         )
-                        OutlinedTextField(
-                            value = row.price, onValueChange = { row.price = it },
-                            label = { Text("Price") }, singleLine = true, prefix = { Text("$") },
-                            keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Decimal),
-                            modifier = Modifier.width(110.dp).padding(start = 8.dp),
-                        )
-                        IconButton(onClick = { vm.rows.remove(row) }) { Icon(Icons.Default.Delete, "Remove") }
+                        if (vm.dateDetected) Tag("From receipt", color = Amni.palette.brass)
                     }
                 }
             }
+            item {
+                Panel {
+                    Row(Modifier.padding(14.dp), verticalAlignment = Alignment.CenterVertically) {
+                        Column(Modifier.weight(1f)) {
+                            Eyebrow("Items subtotal")
+                            vm.totalCents?.let {
+                                Text(
+                                    "Receipt total ${Money.format(it)} incl. tax",
+                                    style = MaterialTheme.typography.bodySmall,
+                                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                                )
+                            }
+                        }
+                        PriceText(vm.subtotalCents)
+                    }
+                }
+            }
+            items(vm.rows, key = { it.id }) { row -> ReceiptLine(row, onRemove = { vm.rows.remove(row) }) }
         }
         Button(
             onClick = { vm.save(onDone) },
             enabled = vm.canSave,
-            modifier = Modifier.fillMaxWidth().padding(16.dp),
+            shape = MaterialTheme.shapes.small,
+            modifier = Modifier.fillMaxWidth().padding(16.dp).height(52.dp),
         ) { Text("Save ${vm.rows.size} prices") }
+    }
+
+    if (pickingDate) {
+        val state = rememberDatePickerState(
+            initialSelectedDateMillis = vm.date.atStartOfDay(ZoneOffset.UTC).toInstant().toEpochMilli(),
+        )
+        DatePickerDialog(
+            onDismissRequest = { pickingDate = false },
+            confirmButton = {
+                TextButton(onClick = {
+                    state.selectedDateMillis?.let { vm.date = Instant.ofEpochMilli(it).atZone(ZoneOffset.UTC).toLocalDate() }
+                    pickingDate = false
+                }) { Text("OK") }
+            },
+            dismissButton = { TextButton(onClick = { pickingDate = false }) { Text("Cancel") } },
+        ) { DatePicker(state) }
+    }
+}
+
+@Composable
+private fun ReceiptLine(row: ReceiptRow, onRemove: () -> Unit) {
+    Panel {
+        Column(Modifier.padding(start = 12.dp, top = 10.dp, bottom = 10.dp, end = 4.dp)) {
+            Row(verticalAlignment = Alignment.CenterVertically) {
+                OutlinedTextField(
+                    value = row.name, onValueChange = { row.name = it },
+                    label = { Text(if (row.quantity > 1) "Item · ×${row.quantity}" else "Item") },
+                    singleLine = true, shape = MaterialTheme.shapes.small,
+                    modifier = Modifier.weight(1f),
+                )
+                Spacer(Modifier.width(8.dp))
+                OutlinedTextField(
+                    value = row.price, onValueChange = { row.price = it },
+                    label = { Text(if (row.quantity > 1) "Each" else "Price") },
+                    singleLine = true, prefix = { Text("$") }, shape = MaterialTheme.shapes.small,
+                    textStyle = AmniText.priceSmall,
+                    keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Decimal),
+                    modifier = Modifier.width(104.dp),
+                )
+                IconButton(onClick = onRemove) { Icon(Icons.Default.Close, "Remove", tint = MaterialTheme.colorScheme.onSurfaceVariant) }
+            }
+            val match = row.matchName
+            if (match != null) {
+                Row(
+                    Modifier.padding(top = 6.dp, end = 8.dp).clickable { row.linked = !row.linked },
+                    verticalAlignment = Alignment.CenterVertically,
+                ) {
+                    Icon(
+                        if (row.linked) Icons.Default.Link else Icons.Default.LinkOff,
+                        null,
+                        Modifier.size(16.dp),
+                        tint = if (row.linked) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurfaceVariant,
+                    )
+                    Spacer(Modifier.width(6.dp))
+                    Text(
+                        (if (row.linked) "Saving as " else "Tap to save as ") + match,
+                        style = MaterialTheme.typography.bodySmall,
+                        color = if (row.linked) MaterialTheme.colorScheme.onSurface else MaterialTheme.colorScheme.onSurfaceVariant,
+                        maxLines = 1,
+                        overflow = TextOverflow.Ellipsis,
+                    )
+                }
+            }
+            if (row.discounted) Tag("Coupon applied", color = Amni.palette.brass, modifier = Modifier.padding(top = 6.dp))
+        }
     }
 }
