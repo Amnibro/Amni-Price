@@ -15,7 +15,7 @@ you can see which business really has the most affordable goods.
 | **GitHub Releases** | Download the signed APK from the [latest release](https://github.com/Amnibro/Amni-Price/releases/latest). |
 | **Obtainium** | [Add to Obtainium](https://apps.obtainium.imranr.dev/redirect?r=obtainium://add/https://github.com/Amnibro/Amni-Price) or add `https://github.com/Amnibro/Amni-Price` by hand to get updates straight from GitHub releases. |
 | **Google Play (closed beta)** | Testers join at [play.google.com/apps/testing/com.amniscient.price](https://play.google.com/apps/testing/com.amniscient.price). Not on the list yet? Email [amnibro7@gmail.com](mailto:amnibro7@gmail.com?subject=Amni-Price%20beta) with the subject "Amni-Price beta" and the Google account you use for Play. |
-| **F-Droid** | Submitted to the main F-Droid repo; it appears in the F-Droid app once accepted. Until then the `-foss` APK on the [latest release](https://github.com/Amnibro/Amni-Price/releases/latest) is the same fully open-source build. |
+| **F-Droid** | Coming to the main F-Droid repo (submission in progress). Until it's listed, the `-foss` APK on the [latest release](https://github.com/Amnibro/Amni-Price/releases/latest) is the identical build: it's [reproducible](https://f-droid.org/docs/Reproducible_Builds/), so F-Droid will ship the same developer-signed file and you won't need to reinstall. |
 
 Two builds exist: `play` (Google ML Kit OCR) and `fdroid` (Tesseract + ZXing, no Google code, also the `-foss` APK).
 The Play, GitHub and F-Droid builds are signed with different keys (Google re-signs Play installs), so stick
