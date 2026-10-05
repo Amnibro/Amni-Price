@@ -11,14 +11,14 @@ val ksFile = listOfNotNull(System.getenv("AMNI_PRICE_SIGNING"), rootProject.file
 val ksProp = Properties().apply { ksFile?.inputStream()?.use { load(it) } }
 android {
     namespace = "com.amniscient.price"
-    compileSdk = 35
+    compileSdk = 36
 
     defaultConfig {
         applicationId = "com.amniscient.price"
         minSdk = 26
-        targetSdk = 35
-        versionCode = 3
-        versionName = "0.3.0"
+        targetSdk = 36
+        versionCode = 4
+        versionName = "0.3.1"
 
         // Map tiles: override in gradle.properties / local.properties with your provider before publishing.
         val tileUrl = (project.findProperty("amni.mapTileUrl") as String?) ?: "https://tile.openstreetmap.org/{z}/{x}/{y}.png"
@@ -40,6 +40,7 @@ android {
             signingConfig = if (ksFile != null) signingConfigs.getByName("release") else null
             isMinifyEnabled = true
             isShrinkResources = true
+            ndk { debugSymbolLevel = "SYMBOL_TABLE" }
             proguardFiles(getDefaultProguardFile("proguard-android-optimize.txt"), "proguard-rules.pro")
         }
     }
