@@ -55,6 +55,14 @@ with one source or uninstall before switching.
 - **Auto categories.** Products are sorted into Produce, Dairy & eggs, Pantry and so on. Filter
   and sort the comparison by category, price gap, recency or name.
 
+**Community prices**
+- **Prices near you, worldwide.** Settings → Community prices downloads recent shelf and receipt prices that
+  shoppers shared with the open [Open Prices](https://prices.openfoodfacts.org) database (Open Food Facts), for stores
+  within 10–100 km. They fill in the map and comparisons; your own scans, recent purchases and personal inflation stay yours.
+- **Small, private downloads.** A nightly job (`tools/openprices/`) splits the global Open Prices dump into 2° map tiles
+  published on [amni-price-data](https://github.com/Amnibro/amni-price-data). The app requests only the tiles around
+  you; your exact location never leaves the phone.
+
 **Map**
 - **Price map.** Pick any product and see every store's price pinned on the map, colored
   against the cheapest (cheapest / within 10% / higher; the label always shows the number).

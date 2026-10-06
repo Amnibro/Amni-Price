@@ -16,6 +16,12 @@ Both fonts are bundled in `app/src/main/res/font/` and licensed under the
 - Map data © OpenStreetMap contributors, available under the
   [Open Database License](https://www.openstreetmap.org/copyright). Attribution is shown on the map.
 
+## Community prices
+
+- Prices from [Open Prices](https://prices.openfoodfacts.org), © Open Food Facts contributors, available under the
+  [Open Database License 1.0](https://opendatacommons.org/licenses/odbl/1-0/). Tiles are rebuilt nightly by
+  `tools/openprices/` and published at https://github.com/Amnibro/amni-price-data under the same license.
+
 ## Libraries
 
 AndroidX, Jetpack Compose, CameraX and Room (Apache 2.0); Kotlin coroutines (Apache 2.0).

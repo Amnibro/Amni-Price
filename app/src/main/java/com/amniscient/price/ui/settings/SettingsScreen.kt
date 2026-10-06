@@ -64,12 +64,26 @@ import com.amniscient.price.ui.components.appViewModel
 import com.amniscient.price.ui.theme.Amni
 import com.amniscient.price.ui.theme.AmniText
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 import java.io.File
 import java.time.LocalDate
 
-class SettingsViewModel(val repository: PriceRepository, val settings: SettingsStore) : ViewModel() {
+class SettingsViewModel(val repository: PriceRepository, val settings: SettingsStore, private val location: com.amniscient.price.data.LocationService) : ViewModel() {
+    suspend fun downloadCommunity(): Result<com.amniscient.price.data.CommunityResult> = runCatching {
+        val stores = repository.allStores.first()
+        val center = location.takeIf { it.hasPermission() }?.current() ?: stores.firstOrNull { it.id == settings.currentStoreId.value }?.position ?: stores.firstOrNull { it.position != null && it.externalId == null }?.position
+            ?: error("Turn on location, or pin one of your stores on the map, so we know which area to download")
+        val (pack, generated) = com.amniscient.price.data.CommunityPrices.fetch(center, settings.communityRadiusKm.value)
+        val count = repository.importCommunity(pack)
+        settings.setCommunityUpdated(generated.take(10))
+        com.amniscient.price.data.CommunityResult(pack.stores.size, count, generated)
+    }
+    suspend fun removeCommunity() {
+        repository.removeCommunity()
+        settings.setCommunityUpdated(null)
+    }
     suspend fun export(context: Context) {
         val csv = repository.exportCsv()
         val file = withContext(Dispatchers.IO) {
@@ -103,7 +117,11 @@ class SettingsViewModel(val repository: PriceRepository, val settings: SettingsS
 
 @Composable
 fun SettingsScreen(onBack: () -> Unit, onManageStores: () -> Unit) {
-    val vm = appViewModel { SettingsViewModel(it.repository, it.settings) }
+    val vm = appViewModel { SettingsViewModel(it.repository, it.settings, it.location) }
+    val communityRadius by vm.settings.communityRadiusKm.collectAsStateWithLifecycle()
+    val communityUpdated by vm.settings.communityUpdated.collectAsStateWithLifecycle()
+    val communityCount by vm.repository.communityPriceCount.collectAsStateWithLifecycle(0)
+    var communityBusy by remember { mutableStateOf(false) }
     val theme by vm.settings.theme.collectAsStateWithLifecycle()
     val units by vm.settings.units.collectAsStateWithLifecycle()
     val haptics by vm.settings.haptics.collectAsStateWithLifecycle()
@@ -160,6 +178,46 @@ fun SettingsScreen(onBack: () -> Unit, onManageStores: () -> Unit) {
                 }
             }
 
+            SectionHeader("Community prices")
+            Panel {
+                Column(Modifier.padding(16.dp)) {
+                    Text("Prices near you from Open Prices", style = MaterialTheme.typography.bodyLarge)
+                    Text(
+                        "Download recent shelf and receipt prices that other shoppers shared with the open Open Prices database, for stores within the distance below. " +
+                            "They fill in the map and comparisons; your own scans and recent purchases stay separate. Your exact location never leaves the phone: the app requests whole 2° map tiles (about 200 km across) from GitHub.",
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    )
+                    Spacer(Modifier.height(8.dp))
+                    Segmented(listOf(10, 25, 50, 100), communityRadius, { "$it km" }, vm.settings::setCommunityRadius)
+                }
+                HorizontalDivider(color = Amni.palette.hairline)
+                NavRow(
+                    Icons.Default.FileDownload,
+                    if (communityBusy) "Downloading…" else if (communityCount > 0) "Update community prices" else "Download community prices",
+                    if (communityCount > 0) "$communityCount prices · data from ${communityUpdated ?: "Open Prices"}" else "Within $communityRadius km of you",
+                ) {
+                    if (!communityBusy) scope.launch {
+                        communityBusy = true
+                        val result = vm.downloadCommunity()
+                        communityBusy = false
+                        snackbar.showSnackbar(result.fold({ if (it.prices == 0) "No community prices within $communityRadius km yet. Your scans can be the first." else "Added ${it.prices} prices from ${it.stores} stores" }, { it.message ?: "Download failed" }))
+                    }
+                }
+                if (communityCount > 0) {
+                    HorizontalDivider(color = Amni.palette.hairline)
+                    NavRow(Icons.Default.DeleteForever, "Remove community prices", "Keeps everything you scanned yourself") {
+                        scope.launch {
+                            vm.removeCommunity()
+                            snackbar.showSnackbar("Community prices removed")
+                        }
+                    }
+                }
+                HorizontalDivider(color = Amni.palette.hairline)
+                NavRow(Icons.Default.Public, "Data: Open Prices · ODbL", "© Open Food Facts contributors. Tap for the license") {
+                    context.startActivity(Intent(Intent.ACTION_VIEW, Uri.parse(com.amniscient.price.data.CommunityPrices.LICENSE_URL)))
+                }
+            }
             SectionHeader("Data")
             Panel {
                 NavRow(Icons.Default.Storefront, "Manage stores", "Rename, delete, choose where you're shopping", onClick = onManageStores)
@@ -194,6 +252,7 @@ fun SettingsScreen(onBack: () -> Unit, onManageStores: () -> Unit) {
                     Text(
                         "Text recognition and barcode scanning run on this phone. Photos are never saved or uploaded, " +
                             "there are no accounts, ads or trackers, and your prices and location only leave the device when you export them. " +
+                            "Downloading community prices requests the map tiles covering your area from GitHub, which reveals only your rough region. " +
                             "The price map downloads map images for the area you're viewing; nothing about your prices is sent.",
                         style = MaterialTheme.typography.bodyMedium,
                     )

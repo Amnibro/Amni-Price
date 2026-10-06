@@ -22,6 +22,10 @@ interface StoreDao {
     @Query("SELECT * FROM stores WHERE id = :id")
     suspend fun getById(id: Long): StoreEntity?
 
+    @Query("SELECT * FROM stores WHERE externalId IS NOT NULL")
+    suspend fun community(): List<StoreEntity>
+    @Query("DELETE FROM stores WHERE externalId IS NOT NULL AND id NOT IN (SELECT storeId FROM prices)")
+    suspend fun deleteUnusedCommunity()
     @Insert suspend fun insert(store: StoreEntity): Long
     @Update suspend fun update(store: StoreEntity)
     @Delete suspend fun delete(store: StoreEntity)
@@ -50,6 +54,8 @@ interface ProductDao {
     @Insert suspend fun insert(product: ProductEntity): Long
     @Update suspend fun update(product: ProductEntity)
     @Delete suspend fun delete(product: ProductEntity)
+    @Query("DELETE FROM products WHERE id NOT IN (SELECT productId FROM prices) AND id NOT IN (SELECT productId FROM shopping_list WHERE productId IS NOT NULL)")
+    suspend fun deleteUnpriced()
 }
 
 @Dao
@@ -70,6 +76,7 @@ interface PriceDao {
         """SELECT prices.*, products.name AS productName, CASE WHEN stores.location IS NULL THEN stores.name ELSE stores.name || ' · ' || stores.location END AS storeName FROM prices
            JOIN products ON products.id = prices.productId
            JOIN stores ON stores.id = prices.storeId
+           WHERE prices.source != 'COMMUNITY'
            ORDER BY observedAt DESC, prices.id DESC LIMIT :limit""",
     )
     fun observeRecent(limit: Int): Flow<List<PriceRow>>
@@ -84,6 +91,13 @@ interface PriceDao {
 
     @Query("SELECT * FROM prices")
     fun observeAll(): Flow<List<PriceEntity>>
+    @Query("SELECT * FROM prices WHERE source != 'COMMUNITY'")
+    fun observeOwn(): Flow<List<PriceEntity>>
+    @Query("SELECT COUNT(*) FROM prices WHERE source = 'COMMUNITY'")
+    fun observeCommunityCount(): Flow<Int>
+    @Query("DELETE FROM prices WHERE source = 'COMMUNITY'")
+    suspend fun deleteCommunity()
+    @Insert suspend fun insertAll(list: List<PriceEntity>)
 
     @Query("SELECT * FROM prices ORDER BY observedAt")
     suspend fun getAll(): List<PriceEntity>

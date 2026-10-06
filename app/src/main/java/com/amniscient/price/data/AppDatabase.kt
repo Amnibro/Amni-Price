@@ -27,7 +27,7 @@ class Converters {
  */
 @Database(
     entities = [StoreEntity::class, ProductEntity::class, PriceEntity::class, ShoppingItemEntity::class],
-    version = 3,
+    version = 4,
     exportSchema = true,
 )
 @TypeConverters(Converters::class)
@@ -63,6 +63,13 @@ abstract class AppDatabase : RoomDatabase() {
             }
         }
 
+        val MIGRATION_3_4 = object : Migration(3, 4) {
+            override fun migrate(db: SupportSQLiteDatabase) {
+                db.execSQL("ALTER TABLE stores ADD COLUMN externalId TEXT")
+                db.execSQL("CREATE UNIQUE INDEX IF NOT EXISTS `index_stores_externalId` ON `stores` (`externalId`)")
+                db.execSQL("CREATE INDEX IF NOT EXISTS `index_prices_productId_storeId_observedAt` ON `prices` (`productId`, `storeId`, `observedAt`)")
+            }
+        }
         private const val SHOPPING_LIST_SQL =
             "CREATE TABLE IF NOT EXISTS `shopping_list` (`id` INTEGER PRIMARY KEY AUTOINCREMENT NOT NULL, " +
                 "`name` TEXT NOT NULL, `productId` INTEGER, `quantity` INTEGER NOT NULL, `checked` INTEGER NOT NULL, " +
@@ -71,7 +78,7 @@ abstract class AppDatabase : RoomDatabase() {
 
         fun build(context: Context): AppDatabase =
             Room.databaseBuilder(context, AppDatabase::class.java, "amni-price.db")
-                .addMigrations(MIGRATION_1_2, MIGRATION_2_3)
+                .addMigrations(MIGRATION_1_2, MIGRATION_2_3, MIGRATION_3_4)
                 .build()
     }
 }

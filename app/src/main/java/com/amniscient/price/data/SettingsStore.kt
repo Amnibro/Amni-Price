@@ -28,6 +28,18 @@ class SettingsStore(context: Context) {
     private val _onboarded = MutableStateFlow(prefs.getBoolean(KEY_ONBOARDED, false))
     val onboarded: StateFlow<Boolean> = _onboarded.asStateFlow()
 
+    private val _communityRadiusKm = MutableStateFlow(prefs.getInt(KEY_COMMUNITY_RADIUS, 50))
+    val communityRadiusKm: StateFlow<Int> = _communityRadiusKm.asStateFlow()
+    private val _communityUpdated = MutableStateFlow(prefs.getString(KEY_COMMUNITY_UPDATED, null))
+    val communityUpdated: StateFlow<String?> = _communityUpdated.asStateFlow()
+    fun setCommunityRadius(km: Int) {
+        prefs.edit().putInt(KEY_COMMUNITY_RADIUS, km).apply()
+        _communityRadiusKm.value = km
+    }
+    fun setCommunityUpdated(value: String?) {
+        prefs.edit().putString(KEY_COMMUNITY_UPDATED, value).apply()
+        _communityUpdated.value = value
+    }
     fun setCurrentStore(id: Long?) {
         prefs.edit().putLong(KEY_STORE, id ?: -1L).apply()
         _currentStoreId.value = id
@@ -62,5 +74,7 @@ class SettingsStore(context: Context) {
         const val KEY_UNITS = "units"
         const val KEY_HAPTICS = "haptics"
         const val KEY_ONBOARDED = "onboarded"
+        const val KEY_COMMUNITY_RADIUS = "community_radius_km"
+        const val KEY_COMMUNITY_UPDATED = "community_updated"
     }
 }

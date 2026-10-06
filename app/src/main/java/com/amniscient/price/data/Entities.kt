@@ -9,7 +9,7 @@ import androidx.room.PrimaryKey
 import com.amniscient.price.domain.Category
 import com.amniscient.price.domain.LatLng
 
-@Entity(tableName = "stores")
+@Entity(tableName = "stores", indices = [Index(value = ["externalId"], unique = true)])
 data class StoreEntity(
     @PrimaryKey(autoGenerate = true) val id: Long = 0,
     val name: String,
@@ -20,6 +20,7 @@ data class StoreEntity(
     val longitude: Double? = null,
     /** Town or area used to group stores on the price map; filled from the map position when possible. */
     val region: String? = null,
+    val externalId: String? = null,
 ) {
     val position: LatLng? get() = if (latitude != null && longitude != null) LatLng(latitude, longitude) else null
 
@@ -42,7 +43,7 @@ data class ProductEntity(
     @ColumnInfo(defaultValue = "OTHER") val category: Category = Category.OTHER,
 )
 
-enum class PriceSource { SHELF, RECEIPT, MANUAL, IMPORT }
+enum class PriceSource { SHELF, RECEIPT, MANUAL, IMPORT, COMMUNITY }
 
 @Entity(
     tableName = "prices",
@@ -50,7 +51,7 @@ enum class PriceSource { SHELF, RECEIPT, MANUAL, IMPORT }
         ForeignKey(ProductEntity::class, ["id"], ["productId"], onDelete = ForeignKey.CASCADE),
         ForeignKey(StoreEntity::class, ["id"], ["storeId"], onDelete = ForeignKey.CASCADE),
     ],
-    indices = [Index("productId"), Index("storeId"), Index("observedAt")],
+    indices = [Index("productId"), Index("storeId"), Index("observedAt"), Index(value = ["productId", "storeId", "observedAt"])],
 )
 data class PriceEntity(
     @PrimaryKey(autoGenerate = true) val id: Long = 0,

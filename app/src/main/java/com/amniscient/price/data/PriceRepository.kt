@@ -167,24 +167,26 @@ class PriceRepository(private val db: AppDatabase) {
         combine(
             products.observeAll(),
             stores.observeAll(),
-            prices.observeAll(),
+            prices.observeOwn(),
             latestDistinct,
         ) { prods, storeList, all, latest ->
             val productNames = prods.associate { it.id to it.name }
             val storeNames = storeList.associate { it.id to it.displayName }
+            val mine = all.mapTo(HashSet()) { it.productId }
+            val tracked = latest.filter { it.productId in mine }
             val changes = PriceInsights.latestChanges(all.map { Observation(it.productId, it.storeId, it.priceCents, it.observedAt) })
             Insights(
-                productCount = prods.size,
-                storeCount = storeList.size,
+                productCount = mine.size,
+                storeCount = all.mapTo(HashSet()) { it.storeId }.size,
                 priceCount = all.size,
-                potentialSavingsCents = PriceInsights.potentialSavings(latest.map { LatestPrice(it.productId, it.storeId, it.priceCents) }),
+                potentialSavingsCents = PriceInsights.potentialSavings(tracked.map { LatestPrice(it.productId, it.storeId, it.priceCents) }),
                 inflationPercent = PriceInsights.personalInflation(changes),
                 changes = changes.mapNotNull { c ->
                     val p = productNames[c.productId] ?: return@mapNotNull null
                     val s = storeNames[c.storeId] ?: return@mapNotNull null
                     NamedChange(c, p, s)
                 },
-                topStore = rank(latest, storeList).firstOrNull(),
+                topStore = rank(tracked, storeList).firstOrNull(),
             )
         }
 
@@ -429,7 +431,7 @@ class PriceRepository(private val db: AppDatabase) {
         val storeById = stores.observeAll().first().associateBy { it.id }
         val productById = products.getAll().associateBy { it.id }
         val rows = mutableListOf(CSV_HEADER)
-        prices.getAll().forEach { p ->
+        prices.getAll().filter { it.source != PriceSource.COMMUNITY }.forEach { p ->
             val product = productById[p.productId] ?: return@forEach
             val store = storeById[p.storeId] ?: return@forEach
             rows += listOf(
@@ -491,6 +493,28 @@ class PriceRepository(private val db: AppDatabase) {
         imported
     }
 
+    val communityPriceCount: Flow<Int> = prices.observeCommunityCount()
+    suspend fun importCommunity(pack: CommunityPack): Int = db.withTransaction {
+        prices.deleteCommunity()
+        val existing = stores.community().associateBy { it.externalId }
+        val storeIds = pack.stores.map { s ->
+            existing[s.externalId]?.let { old -> old.copy(name = s.name, location = s.city.ifBlank { null }, latitude = s.position.lat, longitude = s.position.lng, region = s.city.ifBlank { old.region }).also { if (it != old) stores.update(it) }.id }
+                ?: stores.insert(StoreEntity(name = s.name, location = s.city.ifBlank { null }, latitude = s.position.lat, longitude = s.position.lng, region = s.city.ifBlank { null }, externalId = s.externalId))
+        }
+        val productIds = pack.products.map { p ->
+            products.findByBarcode(p.barcode)?.id ?: p.name.ifBlank { "Item ${p.barcode}" }.let { n -> products.insert(ProductEntity(name = n, normalizedName = normalizeName(n), barcode = p.barcode, sizeText = p.quantity, brand = p.brand, category = Categorizer.categorize(n))) }
+        }
+        val rows = pack.prices.map { PriceEntity(productId = productIds[it.product], storeId = storeIds[it.store], priceCents = it.cents, observedAt = it.observedAt, source = PriceSource.COMMUNITY, onSale = it.onSale) }
+        rows.chunked(2000).forEach { prices.insertAll(it) }
+        stores.deleteUnusedCommunity()
+        products.deleteUnpriced()
+        rows.size
+    }
+    suspend fun removeCommunity() = db.withTransaction {
+        prices.deleteCommunity()
+        stores.deleteUnusedCommunity()
+        products.deleteUnpriced()
+    }
     companion object {
         val CSV_HEADER = listOf(
             "product", "barcode", "brand", "size", "category", "store", "location", "latitude", "longitude", "region",
