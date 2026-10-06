@@ -92,8 +92,9 @@ with one source or uninstall before switching.
   group.
 
 **Private by design.** OCR and barcode models ship inside the APK. No account, no ads, no
-trackers. Your prices and location never leave the phone unless you export them. The only
-network use is downloading map images for the area you're viewing.
+trackers. Your prices and location never leave the phone unless you export them. Network use is
+limited to map images for the area you're viewing and, only when you tap Download in Settings →
+Community prices, the Open Prices tiles for your area (2° squares, about 200 km across) from GitHub.
 
 ## Design
 

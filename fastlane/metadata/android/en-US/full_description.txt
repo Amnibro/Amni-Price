@@ -29,4 +29,4 @@ PRIVATE BY DESIGN
 • Export your data to CSV any time.
 
 OPEN SOURCE
-Amni-Price is free and open source under the GPL-3.0. The only network use is OpenStreetMap tiles for the price map. Read the code, report issues or contribute at github.com/Amnibro/Amni-Price.
+Amni-Price is free and open source under the GPL-3.0. Network use: OpenStreetMap map tiles while a map is open, and, only when you tap Download in Settings → Community prices, the Open Prices price tiles for your area (2° squares, about 200 km across) from github.com/Amnibro/amni-price-data. Your exact location never leaves the phone. Read the code, report issues or contribute at github.com/Amnibro/Amni-Price.

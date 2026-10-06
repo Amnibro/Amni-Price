@@ -1,0 +1,2 @@
+• The app description now lists every network connection, including the optional community price download
+• Restaurants: scan menus and delivery-app screenshots, and see app markups vs in-store prices (new in 0.6.0)
