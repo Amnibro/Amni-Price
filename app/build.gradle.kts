@@ -18,8 +18,8 @@ android {
         applicationId = "com.amniscient.price"
         minSdk = 26
         targetSdk = 36
-        versionCode = 9
-        versionName = "0.5.1"
+        versionCode = 10
+        versionName = "0.6.0"
 
         // Map tiles: override in gradle.properties / local.properties with your provider before publishing.
         val tileUrl = (project.findProperty("amni.mapTileUrl") as String?) ?: "https://tile.openstreetmap.org/{z}/{x}/{y}.png"

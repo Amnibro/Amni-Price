@@ -6,6 +6,11 @@ SCAN
 • Snap a receipt and every line is read: coupons are applied to the right item, quantities become unit prices, and the store and date are filled in.
 • Receipt abbreviations like "GV WHL MLK" are matched to products you've already logged.
 
+RESTAURANTS & DELIVERY APPS
+• Scan menus, menu boards and DoorDash, Uber Eats or Grubhub screenshots.
+• Tag where you saw each price and see the markup: "DoorDash $13.70, +25% vs $10.95 in store".
+• Compare the same item across locations of a chain.
+
 COMPARE
 • See the price gap you're tracking, the cheapest store and your personal inflation rate.
 • A cheapest-store ranking across every product you've seen at two or more stores.

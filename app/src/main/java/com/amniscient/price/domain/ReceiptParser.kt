@@ -23,6 +23,8 @@ object ReceiptParser {
     private val opts = setOf(RegexOption.IGNORE_CASE)
     private val itemLine = Regex("""^(.*?[A-Za-z].*?)\s+(-)?\$?\s*(\d{1,4}[.,]\d{2})\s*(-)?\s*(?:[A-Z]{1,2}|\*)?\s*$""")
     private val qtyLine = Regex("""(\d{1,3})\s*@\s*\$?\s*(\d{1,4}[.,]\d{2})""")
+    private val edgeJunkEnd = Regex("""[\s:;|'"`_~«»©®•·]+$""")
+    private val edgeJunkStart = Regex("""^[\s:;|'"`_~«»©®•·]+""")
     private val splitDecimal = Regex("""(\d)([.,])\s+(?=\d)""")
     private val qtyOnly = Regex("""^\s*(\d{1,3})\s*(?:[°º©®]*\s*@|[©®]|[eaQxX×])\s*\$?\s*(\d{1,4}[.,]\d{2})\s*$""")
     private val skip = Regex(
@@ -41,7 +43,7 @@ object ReceiptParser {
         var totalCents: Long? = null
 
         for (raw in rows) {
-            val row = splitDecimal.replace(raw.trim(), "$1$2")
+            val row = splitDecimal.replace(raw.trim(), "$1$2").replace(edgeJunkEnd, "").replace(edgeJunkStart, "")
             if (row.isEmpty()) continue
 
             if (skip.containsMatchIn(row)) {
@@ -118,7 +120,7 @@ object ReceiptParser {
             .replace(trailingFlag, "")
             .trim(' ', '-', '*', '#', ':')
 
-    private fun guessStore(rows: List<String>): String? =
+    internal fun guessStore(rows: List<String>): String? =
         rows.take(5)
             .map { it.trim() }
             .firstOrNull { row ->

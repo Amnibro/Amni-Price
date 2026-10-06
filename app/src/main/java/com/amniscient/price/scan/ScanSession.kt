@@ -1,5 +1,6 @@
 package com.amniscient.price.scan
 
+import com.amniscient.price.data.PriceChannel
 import com.amniscient.price.domain.ReceiptResult
 
 /** A captured shelf tag waiting for the user to confirm it. */
@@ -17,6 +18,8 @@ data class ShelfDraft(
 class ScanSession {
     var pendingShelf: ShelfDraft? = null
     var pendingReceipt: ReceiptResult? = null
+    var pendingIsMenu: Boolean = false
+    var channel: PriceChannel = PriceChannel.IN_STORE
     /** Set by shortcuts (e.g. "Scan receipt" on Home) to open the camera in a given mode. */
     var requestReceiptMode: Boolean = false
     /** Product to show when the price map opens ("View on map" from a product page). */

@@ -7,6 +7,10 @@ import com.amniscient.price.domain.Csv
 import com.amniscient.price.domain.GeoStoreValue
 import com.amniscient.price.domain.LatLng
 import com.amniscient.price.domain.LatestPrice
+import com.amniscient.price.domain.ChannelObservation
+import com.amniscient.price.domain.ChannelSummary
+import com.amniscient.price.domain.Markup
+import com.amniscient.price.domain.Markups
 import com.amniscient.price.domain.Money
 import com.amniscient.price.domain.Observation
 import com.amniscient.price.domain.PriceChange
@@ -50,6 +54,7 @@ data class ProductDetail(
     val history: List<PriceWithStore>,
     /** Latest change at each store (vs. the previous visit), if any. */
     val changes: Map<Long, PriceChange>,
+    val markups: List<Markup> = emptyList(),
 )
 
 data class NamedChange(val change: PriceChange, val productName: String, val storeName: String)
@@ -62,6 +67,7 @@ data class Insights(
     val inflationPercent: Double?,
     val changes: List<NamedChange>,
     val topStore: RankedStore?,
+    val channels: List<ChannelSummary> = emptyList(),
 )
 
 data class StoreItem(val product: ProductEntity, val priceCents: Long, val observedAt: Long, val cheapestElsewhere: Long?)
@@ -124,6 +130,7 @@ data class PriceInput(
     val productId: Long? = null,
     /** Category for a newly created product; auto-detected when null. */
     val category: Category? = null,
+    val channel: PriceChannel = PriceChannel.IN_STORE,
 )
 
 class PriceRepository(private val db: AppDatabase) {
@@ -174,7 +181,7 @@ class PriceRepository(private val db: AppDatabase) {
             val storeNames = storeList.associate { it.id to it.displayName }
             val mine = all.mapTo(HashSet()) { it.productId }
             val tracked = latest.filter { it.productId in mine }
-            val changes = PriceInsights.latestChanges(all.map { Observation(it.productId, it.storeId, it.priceCents, it.observedAt) })
+            val changes = PriceInsights.latestChanges(all.filter { it.channel == PriceChannel.IN_STORE }.map { Observation(it.productId, it.storeId, it.priceCents, it.observedAt) })
             Insights(
                 productCount = mine.size,
                 storeCount = all.mapTo(HashSet()) { it.storeId }.size,
@@ -187,6 +194,7 @@ class PriceRepository(private val db: AppDatabase) {
                     NamedChange(c, p, s)
                 },
                 topStore = rank(tracked, storeList).firstOrNull(),
+                channels = Markups.byChannel(Markups.latest(all.map { ChannelObservation(it.productId, it.storeId, it.channel.name, it.priceCents, it.observedAt) })),
             )
         }
 
@@ -199,15 +207,16 @@ class PriceRepository(private val db: AppDatabase) {
     fun productDetail(productId: Long): Flow<ProductDetail?> =
         combine(products.observeById(productId), prices.observeForProduct(productId)) { product, history ->
             product ?: return@combine null
-            val byStore = history
+            val inStore = history.filter { it.price.channel == PriceChannel.IN_STORE }
+            val byStore = inStore
                 .groupBy { it.price.storeId }
                 .map { (_, list) -> list.maxBy { it.price.observedAt } }
                 .map { StorePrice(it.price.storeId, it.storeName, it.price) }
                 .sortedBy { it.latest.priceCents }
             val changes = PriceInsights
-                .latestChanges(history.map { Observation(it.price.productId, it.price.storeId, it.price.priceCents, it.price.observedAt) })
+                .latestChanges(inStore.map { Observation(it.price.productId, it.price.storeId, it.price.priceCents, it.price.observedAt) })
                 .associateBy { it.storeId }
-            ProductDetail(product, byStore, history, changes)
+            ProductDetail(product, byStore, history, changes, Markups.latest(history.map { ChannelObservation(it.price.productId, it.price.storeId, it.price.channel.name, it.price.priceCents, it.price.observedAt) }))
         }
 
     /** Everything the price map needs for one product: located stores, their latest prices, regions. */
@@ -323,7 +332,8 @@ class PriceRepository(private val db: AppDatabase) {
 
     suspend fun recordPrice(input: PriceInput): Long = db.withTransaction {
         val product = input.productId?.let { products.getById(it) }
-            ?: findOrCreateProduct(input.productName, input.barcode, input.sizeText, input.brand, input.category)
+            ?: findOrCreateProduct(input.productName, input.barcode, input.sizeText, input.brand, input.category ?: Category.MEALS.takeIf { input.source == PriceSource.MENU })
+        if (input.source == PriceSource.MENU) stores.getById(input.storeId)?.takeIf { it.kind != StoreKind.RESTAURANT }?.let { stores.update(it.copy(kind = StoreKind.RESTAURANT)) }
         prices.insert(
             PriceEntity(
                 productId = product.id,
@@ -333,6 +343,7 @@ class PriceRepository(private val db: AppDatabase) {
                 source = input.source,
                 onSale = input.onSale,
                 note = input.note,
+                channel = input.channel,
             ),
         )
     }
@@ -454,6 +465,7 @@ class PriceRepository(private val db: AppDatabase) {
                 Instant.ofEpochMilli(p.observedAt).toString(),
                 p.source.name,
                 p.onSale.toString(),
+                p.channel.name,
             )
         }
         return Csv.write(rows)
@@ -490,6 +502,7 @@ class PriceRepository(private val db: AppDatabase) {
                         observedAt = observedAt,
                         source = PriceSource.IMPORT,
                         onSale = row.col("on_sale").toBoolean(),
+                        channel = row.col("channel")?.let { c -> PriceChannel.entries.firstOrNull { it.name == c } } ?: PriceChannel.IN_STORE,
                     ),
                 )
                 imported++
@@ -523,7 +536,7 @@ class PriceRepository(private val db: AppDatabase) {
     companion object {
         val CSV_HEADER = listOf(
             "product", "barcode", "brand", "size", "category", "store", "location", "latitude", "longitude", "region",
-            "price", "observed_at", "source", "on_sale",
+            "price", "observed_at", "source", "on_sale", "channel",
         )
     }
 }

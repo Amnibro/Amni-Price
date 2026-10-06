@@ -84,8 +84,9 @@ interface PriceDao {
     /** The most recent observation for every (product, store) pair. */
     @Query(
         """SELECT p.* FROM prices p
-           JOIN (SELECT productId, storeId, MAX(observedAt) AS maxAt FROM prices GROUP BY productId, storeId) l
-           ON p.productId = l.productId AND p.storeId = l.storeId AND p.observedAt = l.maxAt""",
+           JOIN (SELECT productId, storeId, MAX(observedAt) AS maxAt FROM prices WHERE channel = 'IN_STORE' GROUP BY productId, storeId) l
+           ON p.productId = l.productId AND p.storeId = l.storeId AND p.observedAt = l.maxAt
+           WHERE p.channel = 'IN_STORE'""",
     )
     fun observeLatest(): Flow<List<PriceEntity>>
 
@@ -104,7 +105,7 @@ interface PriceDao {
     @Query("SELECT * FROM prices ORDER BY observedAt")
     suspend fun getAll(): List<PriceEntity>
 
-    @Query("SELECT * FROM prices WHERE productId = :productId AND storeId = :storeId ORDER BY observedAt DESC LIMIT 1")
+    @Query("SELECT * FROM prices WHERE productId = :productId AND storeId = :storeId AND channel = 'IN_STORE' ORDER BY observedAt DESC LIMIT 1")
     suspend fun latestAt(productId: Long, storeId: Long): PriceEntity?
 
     @Query(

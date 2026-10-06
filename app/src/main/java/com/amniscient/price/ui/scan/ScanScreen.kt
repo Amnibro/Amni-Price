@@ -204,7 +204,7 @@ fun ScanScreen(
                             inactiveBorderColor = MaterialTheme.colorScheme.outline,
                         ),
                         icon = {},
-                    ) { Text(if (mode == ScanMode.SHELF) "SHELF TAG" else "RECEIPT", style = AmniText.eyebrow) }
+                    ) { Text(mode.label, style = AmniText.eyebrow) }
                 }
             }
         }
@@ -239,9 +239,9 @@ fun ScanScreen(
                     onOpenProduct = onOpenProduct,
                 )
             }
-            if (state.mode == ScanMode.RECEIPT && hasCamera) {
+            if (state.mode != ScanMode.SHELF && hasCamera) {
                 Text(
-                    "Lay the receipt flat and fit it inside the frame",
+                    if (state.mode == ScanMode.MENU) "Fit the menu, or pick a delivery-app screenshot" else "Lay the receipt flat and fit it inside the frame",
                     color = Color.White,
                     style = MaterialTheme.typography.bodyMedium,
                     textAlign = TextAlign.Center,
@@ -256,7 +256,7 @@ fun ScanScreen(
                     Column(horizontalAlignment = Alignment.CenterHorizontally) {
                         CircularProgressIndicator(color = Amni.palette.brass, strokeWidth = 2.dp)
                         Spacer(Modifier.height(12.dp))
-                        Eyebrow("Reading receipt", color = Color.White)
+                        Eyebrow(if (state.mode == ScanMode.MENU) "Reading menu" else "Reading receipt", color = Color.White)
                     }
                 }
             }
@@ -270,9 +270,9 @@ fun ScanScreen(
             val sideColors = IconButtonDefaults.filledTonalIconButtonColors(containerColor = Amni.palette.panel2)
             FilledTonalIconButton(
                 onClick = { pickImage.launch(PickVisualMediaRequest(ActivityResultContracts.PickVisualMedia.ImageOnly)) },
-                enabled = state.mode == ScanMode.RECEIPT,
+                enabled = state.mode != ScanMode.SHELF,
                 colors = sideColors,
-            ) { Icon(Icons.Default.PhotoLibrary, "Pick receipt photo") }
+            ) { Icon(Icons.Default.PhotoLibrary, "Pick photo or screenshot") }
 
             ShutterButton(enabled = hasCamera && !state.processing) {
                 when (state.mode) {
@@ -280,7 +280,7 @@ fun ScanScreen(
                         vm.captureShelf()
                         onShelfCaptured()
                     }
-                    ScanMode.RECEIPT -> takeReceiptPhoto(context, imageCapture, vm, onReceiptCaptured)
+                    ScanMode.RECEIPT, ScanMode.MENU -> takeReceiptPhoto(context, imageCapture, vm, onReceiptCaptured)
                 }
             }
 

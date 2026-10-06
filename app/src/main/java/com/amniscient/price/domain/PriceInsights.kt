@@ -49,3 +49,16 @@ object PriceInsights {
             .filter { g -> g.map { it.storeId }.distinct().size >= 2 }
             .sumOf { g -> g.maxOf { it.priceCents } - g.minOf { it.priceCents } }
 }
+data class ChannelObservation(val productId: Long, val storeId: Long, val channel: String, val priceCents: Long, val observedAt: Long)
+data class Markup(val productId: Long, val storeId: Long, val channel: String, val priceCents: Long, val baseCents: Long) {
+    val percent: Double get() = (priceCents - baseCents) * 100.0 / baseCents
+}
+data class ChannelSummary(val channel: String, val averagePercent: Double, val items: Int)
+object Markups {
+    fun latest(observations: List<ChannelObservation>, base: String = "IN_STORE"): List<Markup> {
+        val newest = observations.groupBy { Triple(it.productId, it.storeId, it.channel) }.mapValues { (_, v) -> v.maxBy { it.observedAt } }
+        return newest.values.filter { it.channel != base }.mapNotNull { o -> newest[Triple(o.productId, o.storeId, base)]?.takeIf { it.priceCents > 0 }?.let { Markup(o.productId, o.storeId, o.channel, o.priceCents, it.priceCents) } }
+    }
+    fun byChannel(markups: List<Markup>): List<ChannelSummary> =
+        markups.groupBy { it.channel }.map { (c, m) -> ChannelSummary(c, m.sumOf { it.percent } / m.size, m.size) }.sortedByDescending { it.averagePercent }
+}

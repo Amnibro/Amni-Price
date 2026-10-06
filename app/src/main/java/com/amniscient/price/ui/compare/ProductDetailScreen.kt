@@ -211,7 +211,7 @@ fun ProductDetailScreen(
             }
             item {
                 SectionHeader("Price history")
-                PriceChart(d.history)
+                PriceChart(d.history.filter { it.price.channel == com.amniscient.price.data.PriceChannel.IN_STORE })
             }
             item {
                 SectionHeader("By store")
@@ -248,6 +248,25 @@ fun ProductDetailScreen(
                     }
                 }
             }
+            if (d.markups.isNotEmpty()) item {
+                val names = d.history.associate { it.price.storeId to it.storeName }
+                SectionHeader("Apps & delivery vs in store")
+                Panel {
+                    d.markups.sortedByDescending { it.percent }.forEachIndexed { i, m ->
+                        if (i > 0) HorizontalDivider(color = Amni.palette.hairline)
+                        Row(Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 12.dp), verticalAlignment = Alignment.CenterVertically) {
+                            Column(Modifier.weight(1f)) {
+                                Text(com.amniscient.price.data.PriceChannel.valueOf(m.channel).label, style = MaterialTheme.typography.titleSmall)
+                                Text("${names[m.storeId].orEmpty()} · in store ${Money.format(m.baseCents)}", style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                            }
+                            Column(horizontalAlignment = Alignment.End) {
+                                PriceText(m.priceCents)
+                                Text((if (m.percent >= 0) "+" else "") + com.amniscient.price.ui.components.formatPercent(m.percent), style = AmniText.priceSmall, color = if (m.percent > 0) Amni.palette.rise else Amni.palette.deal)
+                            }
+                        }
+                    }
+                }
+            }
             item {
                 SectionHeader("Every observation")
                 Panel {
@@ -257,7 +276,7 @@ fun ProductDetailScreen(
                             Column(Modifier.weight(1f)) {
                                 Text(h.storeName, style = MaterialTheme.typography.bodyMedium, maxLines = 1, overflow = TextOverflow.Ellipsis)
                                 Text(
-                                    relativeTime(h.price.observedAt) + " · " + h.price.source.name.lowercase() + if (h.price.onSale) " · sale" else "",
+                                    relativeTime(h.price.observedAt) + " · " + h.price.source.name.lowercase() + (if (h.price.channel != com.amniscient.price.data.PriceChannel.IN_STORE) " · " + h.price.channel.label else "") + if (h.price.onSale) " · sale" else "",
                                     style = MaterialTheme.typography.bodySmall,
                                     color = MaterialTheme.colorScheme.onSurfaceVariant,
                                 )

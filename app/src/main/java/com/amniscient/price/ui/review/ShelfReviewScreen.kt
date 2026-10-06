@@ -72,6 +72,8 @@ class ShelfReviewViewModel(
     private val location: LocationService,
 ) : ViewModel() {
     private val draft = session.pendingShelf.also { session.pendingShelf = null }
+    private val sessionRef = session
+    var channel by mutableStateOf(session.channel)
 
     val fromScan = draft?.fromScan == true
     private val fixedProductId = draft?.productId
@@ -150,8 +152,10 @@ class ShelfReviewViewModel(
                     source = if (fromScan) PriceSource.SHELF else PriceSource.MANUAL,
                     productId = fixedProductId,
                     category = category,
+                    channel = channel,
                 ),
             )
+            sessionRef.channel = channel
             settings.setCurrentStore(store)
             onDone()
         }
@@ -225,6 +229,7 @@ fun ShelfReviewScreen(onDone: () -> Unit) {
                 onAddStore = vm::addStore,
                 modifier = Modifier.fillMaxWidth(),
             )
+            com.amniscient.price.ui.components.ChannelPicker(vm.channel, { vm.channel = it }, Modifier.fillMaxWidth())
             CategoryPicker(vm.category, vm::onCategoryChange, Modifier.fillMaxWidth())
             Row(verticalAlignment = Alignment.CenterVertically) {
                 Column(Modifier.weight(1f)) {

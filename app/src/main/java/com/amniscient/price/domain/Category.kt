@@ -12,6 +12,7 @@ enum class Category(val label: String) {
     HOUSEHOLD("Household"),
     PERSONAL("Personal care"),
     BABY_PET("Baby & pet"),
+    MEALS("Meals & menu"),
     OTHER("Other"),
 }
 

@@ -21,6 +21,7 @@ data class StoreEntity(
     /** Town or area used to group stores on the price map; filled from the map position when possible. */
     val region: String? = null,
     val externalId: String? = null,
+    @ColumnInfo(defaultValue = "GROCERY") val kind: StoreKind = StoreKind.GROCERY,
 ) {
     val position: LatLng? get() = if (latitude != null && longitude != null) LatLng(latitude, longitude) else null
 
@@ -43,7 +44,9 @@ data class ProductEntity(
     @ColumnInfo(defaultValue = "OTHER") val category: Category = Category.OTHER,
 )
 
-enum class PriceSource { SHELF, RECEIPT, MANUAL, IMPORT, COMMUNITY }
+enum class PriceSource { SHELF, RECEIPT, MANUAL, IMPORT, COMMUNITY, MENU }
+enum class StoreKind { GROCERY, RESTAURANT }
+enum class PriceChannel(val label: String) { IN_STORE("In store"), DOORDASH("DoorDash"), UBER_EATS("Uber Eats"), GRUBHUB("Grubhub"), INSTACART("Instacart"), STORE_APP("Store app"), ONLINE("Online") }
 
 @Entity(
     tableName = "prices",
@@ -62,6 +65,7 @@ data class PriceEntity(
     val source: PriceSource = PriceSource.MANUAL,
     val onSale: Boolean = false,
     val note: String? = null,
+    @ColumnInfo(defaultValue = "IN_STORE") val channel: PriceChannel = PriceChannel.IN_STORE,
 )
 
 data class PriceWithStore(

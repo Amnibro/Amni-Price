@@ -1,0 +1,3 @@
+• Restaurants: scan menus, menu boards and DoorDash, Uber Eats or Grubhub screenshots
+• Tag where you saw a price (in store, delivery app, store app, online) and see the markup vs the in-store price
+• Open-source build reads menus and receipts more accurately

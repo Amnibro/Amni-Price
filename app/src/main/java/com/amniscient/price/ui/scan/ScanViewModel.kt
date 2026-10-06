@@ -32,7 +32,7 @@ import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
 import java.util.concurrent.atomic.AtomicBoolean
 
-enum class ScanMode { SHELF, RECEIPT }
+enum class ScanMode(val label: String) { SHELF("SHELF TAG"), RECEIPT("RECEIPT"), MENU("MENU") }
 
 data class ScanUiState(
     val mode: ScanMode = ScanMode.SHELF,
@@ -222,11 +222,13 @@ class ScanViewModel(
         viewModelScope.launch {
             try {
                 val rows = RowGrouper.group(read(vision))
-                val receipt = ReceiptParser.parse(rows)
+                val menu = _state.value.mode == ScanMode.MENU
+                val receipt = if (menu) com.amniscient.price.domain.MenuParser.parse(rows) else ReceiptParser.parse(rows)
                 if (receipt.items.isEmpty()) {
-                    _state.update { it.copy(message = "No items found. Flatten the receipt and try again in good light.") }
+                    _state.update { it.copy(message = if (menu) "No prices found. Get the item names and prices in the frame, or pick a screenshot." else "No items found. Flatten the receipt and try again in good light.") }
                 } else {
                     session.pendingReceipt = receipt
+                    session.pendingIsMenu = menu
                     onReady()
                 }
             } catch (e: Exception) {

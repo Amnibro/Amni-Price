@@ -26,8 +26,20 @@ class VisionEngine(private val context: Context) {
     private val tess by lazy { TessBaseAPI().apply { check(init(dataDir().absolutePath, "eng", TessBaseAPI.OEM_LSTM_ONLY)) { "OCR model missing" }; setVariable("user_defined_dpi", "300") } }
     private val hints = mapOf(DecodeHintType.POSSIBLE_FORMATS to listOf(BarcodeFormat.UPC_A, BarcodeFormat.UPC_E, BarcodeFormat.EAN_13, BarcodeFormat.EAN_8, BarcodeFormat.CODE_128), DecodeHintType.TRY_HARDER to true)
     suspend fun analyze(proxy: ImageProxy, withBarcode: Boolean = true): VisionResult = coroutineScope { val b = proxy.upright(LIVE_MAX); val code = async(Dispatchers.Default) { if (withBarcode) barcode(b) else null }; VisionResult(ocr(b, TessBaseAPI.PageSegMode.PSM_SPARSE_TEXT), code.await()) }
-    suspend fun readText(proxy: ImageProxy): List<OcrLine> = ocr(proxy.upright(STILL_MAX).fit(STILL_MAX), TessBaseAPI.PageSegMode.PSM_SINGLE_BLOCK)
-    suspend fun readText(uri: Uri): List<OcrLine> = ocr(withContext(Dispatchers.IO) { decode(uri) }, TessBaseAPI.PageSegMode.PSM_SINGLE_BLOCK)
+    suspend fun readText(proxy: ImageProxy): List<OcrLine> = ocr(binarize(proxy.upright(STILL_MAX).fit(STILL_MAX)), TessBaseAPI.PageSegMode.PSM_SINGLE_BLOCK)
+    suspend fun readText(uri: Uri): List<OcrLine> = ocr(binarize(withContext(Dispatchers.IO) { decode(uri) }), TessBaseAPI.PageSegMode.PSM_SINGLE_BLOCK)
+    private suspend fun binarize(src: Bitmap, offset: Double = 0.08): Bitmap = withContext(Dispatchers.Default) {
+        val w = src.width; val h = src.height; val r = maxOf(8, maxOf(w, h) / 80)
+        val px = IntArray(w * h).also { src.getPixels(it, 0, w, 0, 0, w, h) }
+        val lum = IntArray(w * h) { val c = px[it]; ((c shr 16 and 255) * 299 + (c shr 8 and 255) * 587 + (c and 255) * 114) / 1000 }
+        val sum = LongArray((w + 1) * (h + 1))
+        for (y in 0 until h) { var row = 0L; for (x in 0 until w) { row += lum[y * w + x]; sum[(y + 1) * (w + 1) + x + 1] = sum[y * (w + 1) + x + 1] + row } }
+        for (y in 0 until h) { val y0 = maxOf(0, y - r); val y1 = minOf(h, y + r + 1)
+            for (x in 0 until w) { val x0 = maxOf(0, x - r); val x1 = minOf(w, x + r + 1)
+                val mean = (sum[y1 * (w + 1) + x1] - sum[y0 * (w + 1) + x1] - sum[y1 * (w + 1) + x0] + sum[y0 * (w + 1) + x0]).toDouble() / ((x1 - x0) * (y1 - y0))
+                px[y * w + x] = if (lum[y * w + x] < mean * (1 - offset)) -0x1000000 else -1 } }
+        Bitmap.createBitmap(px, w, h, Bitmap.Config.ARGB_8888)
+    }
     private suspend fun ocr(bitmap: Bitmap, mode: Int): List<OcrLine> = withContext(Dispatchers.Default) {
         lock.withLock {
             tess.pageSegMode = mode

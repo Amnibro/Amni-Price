@@ -204,6 +204,23 @@ fun HomeScreen(
                 }
             }
 
+            if (i.channels.isNotEmpty()) {
+                item {
+                    SectionHeader("Apps & delivery markup")
+                    Panel {
+                        i.channels.forEachIndexed { idx, c ->
+                            if (idx > 0) HorizontalDivider(color = Amni.palette.hairline)
+                            Row(Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 12.dp), verticalAlignment = Alignment.CenterVertically) {
+                                Column(Modifier.weight(1f)) {
+                                    Text(com.amniscient.price.data.PriceChannel.valueOf(c.channel).label, style = MaterialTheme.typography.titleSmall)
+                                    Text("vs the in-store price · ${c.items} item" + if (c.items == 1) "" else "s", style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                                }
+                                Text((if (c.averagePercent >= 0) "+" else "") + formatPercent(c.averagePercent), style = AmniText.price, color = if (c.averagePercent > 0) Amni.palette.rise else Amni.palette.deal)
+                            }
+                        }
+                    }
+                }
+            }
             if (recent.isNotEmpty()) {
                 item { SectionHeader("Recently logged") }
                 item {
@@ -220,7 +237,7 @@ fun HomeScreen(
                                 Column(Modifier.weight(1f)) {
                                     Text(row.productName, style = MaterialTheme.typography.titleSmall, maxLines = 1, overflow = TextOverflow.Ellipsis)
                                     Text(
-                                        "${row.storeName} · ${relativeTime(row.price.observedAt)}",
+                                        "${row.storeName} · " + (if (row.price.channel != com.amniscient.price.data.PriceChannel.IN_STORE) row.price.channel.label + " · " else "") + relativeTime(row.price.observedAt),
                                         style = MaterialTheme.typography.bodySmall,
                                         color = MaterialTheme.colorScheme.onSurfaceVariant,
                                     )

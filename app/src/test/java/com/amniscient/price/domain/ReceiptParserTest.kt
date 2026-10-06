@@ -59,4 +59,9 @@ class ReceiptParserTest {
         assertEquals("CHKN BRST 1.8LB", r.items.single().name)
         assertEquals(899L, r.items.single().priceCents)
     }
+    @Test fun strayOcrSymbolsAtLineEdges() {
+        val r = ReceiptParser.parse(listOf("KROGER", "1375 N HIGH ST |", "CHEERIOS 18OZ 4.99 :", "KROGER COUPON -1.00", "' SUBTOTAL 3.99", "TOTAL 3.99"))
+        assertEquals(listOf("CHEERIOS 18OZ" to 399L), r.items.map { it.name to it.priceCents })
+        assertTrue(r.items.single().discounted)
+    }
 }

@@ -55,6 +55,15 @@ with one source or uninstall before switching.
 - **Auto categories.** Products are sorted into Produce, Dairy & eggs, Pantry and so on. Filter
   and sort the comparison by category, price gap, recency or name.
 
+**Restaurants & delivery apps**
+- **Menu scanning.** A third scan mode reads printed menus, menu boards and delivery-app screenshots (DoorDash,
+  Uber Eats, Grubhub): item names and prices, ignoring calories and fees. Stores you scan menus at become restaurants.
+- **Where you saw it.** Tag any price as in store, DoorDash, Uber Eats, Grubhub, Instacart, the store's app or online.
+  The app compares each one with the in-store price, so you see markups like "Burrito Bowl: DoorDash $13.70, +25% vs
+  $10.95 in store" on the product and an average markup per app on Home. Store comparisons and price alerts use
+  in-store prices only.
+- **Across a chain.** Items are matched by name, so the same menu item at two locations of a chain compares directly.
+
 **Community prices**
 - **Prices near you, worldwide.** Settings → Community prices downloads recent shelf and receipt prices that
   shoppers shared with the open [Open Prices](https://prices.openfoodfacts.org) database (Open Food Facts), for stores

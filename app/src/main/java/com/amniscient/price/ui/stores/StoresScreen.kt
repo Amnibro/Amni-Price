@@ -16,6 +16,7 @@ import androidx.compose.material.icons.filled.Delete
 import androidx.compose.material.icons.filled.Edit
 import androidx.compose.material.icons.filled.RadioButtonChecked
 import androidx.compose.material.icons.filled.RadioButtonUnchecked
+import androidx.compose.material.icons.filled.Restaurant
 import androidx.compose.material.icons.filled.Storefront
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.ExtendedFloatingActionButton
@@ -111,6 +112,7 @@ fun StoresScreen(onBack: () -> Unit, onOpenStore: (Long) -> Unit) {
                                         Text(store.name, style = MaterialTheme.typography.titleSmall)
                                         Text(
                                             listOfNotNull(
+                                                if (store.kind == com.amniscient.price.data.StoreKind.RESTAURANT) "Restaurant" else null,
                                                 store.location,
                                                 store.region,
                                                 if (store.position == null) "No map location" else null,
@@ -119,6 +121,9 @@ fun StoresScreen(onBack: () -> Unit, onOpenStore: (Long) -> Unit) {
                                             style = MaterialTheme.typography.bodySmall,
                                             color = MaterialTheme.colorScheme.onSurfaceVariant,
                                         )
+                                    }
+                                    IconButton(onClick = { vm.update(store.copy(kind = if (store.kind == com.amniscient.price.data.StoreKind.RESTAURANT) com.amniscient.price.data.StoreKind.GROCERY else com.amniscient.price.data.StoreKind.RESTAURANT)) }) {
+                                        Icon(if (store.kind == com.amniscient.price.data.StoreKind.RESTAURANT) Icons.Default.Restaurant else Icons.Default.Storefront, if (store.kind == com.amniscient.price.data.StoreKind.RESTAURANT) "Restaurant, tap to mark as store" else "Store, tap to mark as restaurant", tint = if (store.kind == com.amniscient.price.data.StoreKind.RESTAURANT) Amni.palette.brass else MaterialTheme.colorScheme.onSurfaceVariant)
                                     }
                                     IconButton(onClick = { editing = store }) { Icon(Icons.Default.Edit, "Edit", tint = MaterialTheme.colorScheme.onSurfaceVariant) }
                                     IconButton(onClick = { deleting = store }) { Icon(Icons.Default.Delete, "Delete", tint = MaterialTheme.colorScheme.onSurfaceVariant) }

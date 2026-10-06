@@ -99,6 +99,9 @@ class ReceiptReviewViewModel(
     private val location: LocationService,
 ) : ViewModel() {
     private val receipt = session.pendingReceipt.also { session.pendingReceipt = null }
+    val isMenu = session.pendingIsMenu.also { session.pendingIsMenu = false }
+    private val sessionRef = session
+    var channel by mutableStateOf(session.channel)
 
     val detectedStore: String? = receipt?.storeName
     val totalCents: Long? = receipt?.totalCents
@@ -172,13 +175,15 @@ class ReceiptReviewViewModel(
                 storeId = store,
                 priceCents = cents,
                 onSale = row.discounted,
-                source = PriceSource.RECEIPT,
+                source = if (isMenu) PriceSource.MENU else PriceSource.RECEIPT,
+                channel = channel,
                 observedAt = observedAt,
                 productId = if (row.linked) row.matchId else null,
             )
         }
         viewModelScope.launch {
             repository.recordAll(inputs)
+            sessionRef.channel = channel
             settings.setCurrentStore(store)
             onDone()
         }
@@ -197,7 +202,7 @@ fun ReceiptReviewScreen(onDone: () -> Unit) {
     var pickingDate by remember { mutableStateOf(false) }
 
     Column(Modifier.fillMaxSize().imePadding()) {
-        AmniTopBar(title = "Receipt", eyebrow = "${vm.rows.size} items found", onBack = onDone)
+        AmniTopBar(title = if (vm.isMenu) "Menu" else "Receipt", eyebrow = "${vm.rows.size} items found", onBack = onDone)
         LazyColumn(
             Modifier.weight(1f),
             contentPadding = PaddingValues(16.dp),
@@ -224,9 +229,10 @@ fun ReceiptReviewScreen(onDone: () -> Unit) {
                         )
                         if (vm.dateDetected) Tag("From receipt", color = Amni.palette.brass)
                     }
+                    com.amniscient.price.ui.components.ChannelPicker(vm.channel, { vm.channel = it }, Modifier.fillMaxWidth())
                 }
             }
-            item {
+            if (!vm.isMenu) item {
                 Panel {
                     Row(Modifier.padding(14.dp), verticalAlignment = Alignment.CenterVertically) {
                         Column(Modifier.weight(1f)) {

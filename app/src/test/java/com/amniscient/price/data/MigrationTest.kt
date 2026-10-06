@@ -24,7 +24,7 @@ class MigrationTest {
             execSQL("INSERT INTO prices (id, productId, storeId, priceCents, observedAt, source, onSale, note) VALUES (1, 1, 1, 329, 0, 'SHELF', 0, NULL)")
             close()
         }
-        val db = helper.runMigrationsAndValidate(DB, 4, true, AppDatabase.MIGRATION_1_2, AppDatabase.MIGRATION_2_3, AppDatabase.MIGRATION_3_4)
+        val db = helper.runMigrationsAndValidate(DB, 5, true, AppDatabase.MIGRATION_1_2, AppDatabase.MIGRATION_2_3, AppDatabase.MIGRATION_3_4, AppDatabase.MIGRATION_4_5)
 
         db.query("SELECT category FROM products WHERE id = 1").use { c ->
             c.moveToFirst()
@@ -39,6 +39,8 @@ class MigrationTest {
             c.moveToFirst()
             assertNull(c.getString(0))
         }
+        db.query("SELECT kind FROM stores WHERE id = 1").use { c -> c.moveToFirst(); assertEquals("GROCERY", c.getString(0)) }
+        db.query("SELECT channel FROM prices WHERE id = 1").use { c -> c.moveToFirst(); assertEquals("IN_STORE", c.getString(0)) }
         db.query("SELECT priceCents FROM prices WHERE id = 1").use { c ->
             c.moveToFirst()
             assertEquals(329L, c.getLong(0))
