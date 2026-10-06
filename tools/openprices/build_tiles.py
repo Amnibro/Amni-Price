@@ -16,21 +16,26 @@ def fetch(url, dest=None, retries=4):
 def products(cache, max_age_days):
     p, part = cache / "products.json.gz", cache / "products.partial.json"
     if p.exists() and time.time() - p.stat().st_mtime < max_age_days * 86400: return json.load(gzip.open(p, "rt"))
-    state = json.loads(part.read_text()) if part.exists() else {"page": 1, "pages": 1, "items": {}, "failed": []}
-    out, page = state["items"], state["page"]
-    while page <= state["pages"]:
-        try:
-            d = json.loads(fetch(f"{BASE}/api/v1/products?size=100&price_count__gte=1&order_by=id&page={page}", retries=6))
-            state["pages"] = d.get("pages") or state["pages"]
-            out.update({x["code"]: [x.get("product_name") or "", x.get("brands") or "", x.get("quantity") or ""] for x in d.get("items", []) if x.get("code")})
-        except Exception as e:
-            state["failed"].append(page); print(f"products page {page} skipped: {e}", file=sys.stderr)
-        page += 1; state["page"] = page
-        if page % 25 == 0: part.write_text(json.dumps(state))
-        time.sleep(1.0)
+    state = json.loads(part.read_text()) if part.exists() else {"done": [], "items": {}, "failed": 0}
+    out, done = state["items"], set(state["done"])
+    def page(q, order, n):
+        d = json.loads(fetch(f"{BASE}/api/v1/products?size=100&{q}&order_by={order}&page={n}", retries=3))
+        out.update({x["code"]: [x.get("product_name") or "", x.get("brands") or "", x.get("quantity") or ""] for x in d.get("items", []) if x.get("code")})
+        return d.get("pages") or 0
+    for q in ("price_count=1", "price_count=2", "price_count=3", "price_count__gte=4"):
+        pages = page(q, "id", 1)
+        plan = [("id", n) for n in range(2, min(pages, 500) + 1)] + [("-id", n) for n in range(1, max(0, pages - 500) + 2)]
+        for order, n in plan:
+            key = f"{q}|{order}|{n}"
+            if key in done: continue
+            try: page(q, order, n)
+            except Exception as e: state["failed"] += 1; print(f"products {key} skipped: {e}", file=sys.stderr)
+            done.add(key); state["done"] = sorted(done)
+            if len(done) % 25 == 0: part.write_text(json.dumps(state))
+            time.sleep(1.0)
     with gzip.open(p, "wt") as f: json.dump(out, f)
     part.unlink(missing_ok=True)
-    print(f"products: {len(out)} codes, {len(state['failed'])} pages skipped", file=sys.stderr)
+    print(f"products: {len(out)} codes, {state['failed']} pages skipped", file=sys.stderr)
     return out
 def tile_of(lat, lon): return f"{math.floor(lat / TILE_DEG) * TILE_DEG}_{math.floor(lon / TILE_DEG) * TILE_DEG}"
 def build(cache, out, days, per_pair, product_age):
