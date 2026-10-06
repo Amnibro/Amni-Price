@@ -23,6 +23,8 @@ object ReceiptParser {
     private val opts = setOf(RegexOption.IGNORE_CASE)
     private val itemLine = Regex("""^(.*?[A-Za-z].*?)\s+(-)?\$?\s*(\d{1,4}[.,]\d{2})\s*(-)?\s*(?:[A-Z]{1,2}|\*)?\s*$""")
     private val qtyLine = Regex("""(\d{1,3})\s*@\s*\$?\s*(\d{1,4}[.,]\d{2})""")
+    private val splitDecimal = Regex("""(\d)([.,])\s+(?=\d)""")
+    private val qtyOnly = Regex("""^\s*(\d{1,3})\s*(?:[°º©®]*\s*@|[©®]|[eaQxX×])\s*\$?\s*(\d{1,4}[.,]\d{2})\s*$""")
     private val skip = Regex(
         """\b(sub\s*-?total|total|tax|hst|gst|vat|change|cash|tender|visa|mastercard|amex|debit|credit|balance|""" +
             """card|auth|approval|ref\s*#|terminal|savings|you\s+saved|points|rewards|tip|due|paid|payment|""" +
@@ -39,7 +41,7 @@ object ReceiptParser {
         var totalCents: Long? = null
 
         for (raw in rows) {
-            val row = raw.trim()
+            val row = splitDecimal.replace(raw.trim(), "$1$2")
             if (row.isEmpty()) continue
 
             if (skip.containsMatchIn(row)) {
@@ -49,8 +51,8 @@ object ReceiptParser {
                 continue
             }
 
-            val qty = qtyLine.find(row)
-            val m = itemLine.find(row)
+            val qty = qtyLine.find(row) ?: qtyOnly.find(row)
+            val m = itemLine.find(row)?.takeUnless { qtyOnly.matches(row) }
             if (m == null) {
                 if (qty != null) {
                     val q = qty.groupValues[1].toInt()

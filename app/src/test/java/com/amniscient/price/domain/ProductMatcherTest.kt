@@ -24,4 +24,9 @@ class ProductMatcherTest {
         assertEquals(1.0, ProductMatcher.score("Bananas", "bananas"), 1e-9)
         assertTrue(ProductMatcher.score("GV WHL MLK", "Great Value Whole Milk") > ProductMatcher.score("GV WHL MLK", "Whole Wheat Bread"))
     }
+    @Test fun listWordCoversAbbreviatedProduct() {
+        assertTrue(ProductMatcher.covers("milk", "GV WHL MLK GAL") >= 0.75)
+        assertTrue(ProductMatcher.covers("chicken breast", "CHKN BRST 1.8LB") >= 0.75)
+        assertTrue(ProductMatcher.covers("milk", "LG EGGS 12CT") < 0.75)
+    }
 }

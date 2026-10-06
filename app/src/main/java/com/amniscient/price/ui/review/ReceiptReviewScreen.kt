@@ -127,6 +127,8 @@ class ReceiptReviewViewModel(
                 if (match != null) {
                     storeId = match.id
                     storeMatched = true
+                } else {
+                    storeId = null
                 }
             }
         }

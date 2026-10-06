@@ -66,8 +66,18 @@ object Categorizer {
         ),
     )
 
+    private val abbreviations: Map<Category, List<String>> = mapOf(
+        Category.DAIRY to listOf("mlk", "chs", "ygrt", "yog", "yogrt", "btr", "bttr", "crm", "eggs", "lg eggs", "lrg eggs", "chdr", "mozz", "parm"),
+        Category.MEAT to listOf("chkn", "chk", "brst", "grnd bf", "grd bf", "prk", "sausg", "bcn", "trky", "slmn", "shrmp"),
+        Category.PRODUCE to listOf("bnna", "bnnas", "tmto", "tmtos", "ptto", "ptts", "onin", "letc", "avcdo", "strwb", "blubry", "spnch", "brcli", "org bnna"),
+        Category.BAKERY to listOf("brd", "wht brd", "wht bread", "bgl", "bgls", "tortla", "tort"),
+        Category.PANTRY to listOf("crl", "pnut btr", "pst", "spag", "sce", "snce"),
+        Category.BEVERAGES to listOf("wtr", "spkl", "jce", "coff"),
+        Category.SNACKS to listOf("chps", "ckies", "crkrs", "choc"),
+        Category.HOUSEHOLD to listOf("pprtwl", "ppr twl", "dtrgnt"),
+    )
     private val phrases: List<Pair<String, Category>> =
-        rules.flatMap { (cat, words) -> words.map { it to cat } }
+        (rules.flatMap { (cat, words) -> words.map { it to cat } } + abbreviations.flatMap { (cat, words) -> words.map { it to cat } })
             .sortedByDescending { (phrase, _) -> phrase.count { it == ' ' } }
 
     fun categorize(name: String): Category {

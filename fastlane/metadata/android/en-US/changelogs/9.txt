@@ -1,0 +1,5 @@
+• Receipts: quantity lines like "2 @ 1.25" are read even when the camera splits the number ("1. 25"), so multi-buys get the right unit price
+• Receipts from a store you haven't saved no longer default to the last store you shopped at; tap Create to add it
+• Typing "milk" on your list now links to a scanned "GV WHL MLK GAL"
+• Receipt abbreviations like MLK, CHKN and WHT BRD land in the right category
+• Community prices from Open Prices for stores near you (new in 0.5.0)

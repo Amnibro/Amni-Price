@@ -14,20 +14,16 @@ object ProductMatcher {
             .filter { it.second >= threshold }
             .maxByOrNull { it.second }
 
-    fun score(query: String, candidate: String): Double {
+    fun score(query: String, candidate: String): Double = parts(query, candidate).let { (q, cov) -> if (q >= 1.0 && cov >= 1.0) 1.0 else 0.7 * q + 0.3 * cov }
+    fun covers(query: String, candidate: String): Double = parts(query, candidate).first
+    private fun parts(query: String, candidate: String): Pair<Double, Double> {
         val q = tokens(query)
         val c = tokens(candidate)
-        if (q.isEmpty() || c.isEmpty()) return 0.0
-        if (q == c) return 1.0
-
+        if (q.isEmpty() || c.isEmpty()) return 0.0 to 0.0
+        if (q == c) return 1.0 to 1.0
         val used = BooleanArray(c.size)
-        var total = 0.0
-        for (token in q) {
-            total += matchToken(token, c, used)
-        }
-        val queryScore = total / q.size
-        val coverage = used.count { it }.toDouble() / c.size
-        return 0.7 * queryScore + 0.3 * coverage
+        val total = q.sumOf { matchToken(it, c, used) }
+        return total / q.size to used.count { it }.toDouble() / c.size
     }
 
     private fun matchToken(token: String, candidate: List<String>, used: BooleanArray): Double {
@@ -41,6 +37,7 @@ object ProductMatcher {
                 token.length >= 2 && c.startsWith(token) -> 0.9
                 token.length >= 2 && token[0] == c[0] && isSubsequence(token, c) -> 0.75
                 c.length >= 3 && token.startsWith(c) -> 0.7
+                c.length >= 3 && c[0] == token[0] && isSubsequence(c, token) -> 0.75
                 else -> 0.0
             }
             if (s > bestScore) {

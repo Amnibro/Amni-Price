@@ -259,6 +259,11 @@ class PriceRepository(private val db: AppDatabase) {
     }
 
     /** Best fuzzy match among saved products, for receipt lines and typed shopping-list items. */
+    suspend fun matchListItem(name: String): ProductEntity? = withContext(Dispatchers.Default) {
+        val own = prices.ownProductIds().toHashSet()
+        products.getAll().filter { it.id in own }.map { it to ProductMatcher.covers(name, it.name) }.filter { it.second >= 0.75 }
+            .maxWithOrNull(compareBy<Pair<ProductEntity, Double>> { it.second }.thenBy { ProductMatcher.score(name, it.first.name) })?.first
+    }
     suspend fun matchProduct(name: String, threshold: Double = ProductMatcher.DEFAULT_THRESHOLD): Pair<ProductEntity, Double>? =
         withContext(Dispatchers.Default) {
             val all = products.getAll()
@@ -409,7 +414,7 @@ class PriceRepository(private val db: AppDatabase) {
 
     /** Adds a typed item, linking it to a saved product when the name matches one. */
     suspend fun addToList(name: String, productId: Long? = null, quantity: Int = 1) {
-        val linked = productId ?: matchProduct(name, threshold = 0.75)?.first?.id
+        val linked = productId ?: matchListItem(name)?.id
         if (linked != null) {
             shopping.findOpenForProduct(linked)?.let { existing ->
                 shopping.update(existing.copy(quantity = existing.quantity + quantity))

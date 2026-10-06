@@ -91,6 +91,8 @@ interface PriceDao {
 
     @Query("SELECT * FROM prices")
     fun observeAll(): Flow<List<PriceEntity>>
+    @Query("SELECT DISTINCT productId FROM prices WHERE source != 'COMMUNITY'")
+    suspend fun ownProductIds(): List<Long>
     @Query("SELECT * FROM prices WHERE source != 'COMMUNITY'")
     fun observeOwn(): Flow<List<PriceEntity>>
     @Query("SELECT COUNT(*) FROM prices WHERE source = 'COMMUNITY'")

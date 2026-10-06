@@ -41,4 +41,22 @@ class ReceiptParserTest {
         assertEquals(3, r.items[0].quantity)
         assertEquals(100L, r.items[0].unitPriceCents)
     }
+    @Test fun quantityLineSurvivesOcrMisreadingTheAtSign() {
+        listOf("2 @ 1.25", "2 @ 1. 25", "2 e 1.25", "2 © 1.25", "2°@ 1.25", "2 x 1,25", "2@1.25").forEach { q ->
+            val r = ReceiptParser.parse(listOf("SHOP", "CEREAL 18OZ  4.99", "COUPON  -1.00", q, "GREEK YOGURT  2.50", "TOTAL  6.49"))
+            val yogurt = r.items.single { it.name == "GREEK YOGURT" }
+            assertEquals(q, 2, yogurt.quantity)
+            assertEquals(q, 125L, yogurt.unitPriceCents)
+            assertEquals(q, 2, r.items.size)
+        }
+    }
+    @Test fun wordsAreNotMistakenForQuantities() {
+        val r = ReceiptParser.parse(listOf("SHOP", "TEA 2 PACK  3.00", "EGGS 12CT  2.99"))
+        assertEquals(listOf(1, 1), r.items.map { it.quantity })
+    }
+    @Test fun joinsDecimalsSplitByOcr() {
+        val r = ReceiptParser.parse(listOf("SHOP", "CHKN BRST 1. 8LB  8. 99"))
+        assertEquals("CHKN BRST 1.8LB", r.items.single().name)
+        assertEquals(899L, r.items.single().priceCents)
+    }
 }
