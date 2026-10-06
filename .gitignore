@@ -13,3 +13,4 @@ build/
 *.jks
 .kotlin/
 keystore.properties
+__pycache__/
