@@ -1,5 +1,7 @@
 package com.amniscient.price.ui.scan
 
+import com.amniscient.price.R
+import com.amniscient.price.tr
 import android.os.SystemClock
 import androidx.camera.core.ImageAnalysis
 import androidx.lifecycle.ViewModel
@@ -32,7 +34,7 @@ import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
 import java.util.concurrent.atomic.AtomicBoolean
 
-enum class ScanMode(val label: String) { SHELF("SHELF TAG"), RECEIPT("RECEIPT"), MENU("MENU") }
+enum class ScanMode(val label: String) { SHELF(tr(R.string.s_shelf_tag)), RECEIPT("RECEIPT"), MENU("MENU") }
 
 data class ScanUiState(
     val mode: ScanMode = ScanMode.SHELF,
@@ -200,7 +202,7 @@ class ScanViewModel(
         viewModelScope.launch {
             if (repository.isRecentDuplicate(live.productName, live.barcode, storeId, price)) {
                 clearLive()
-                _state.update { it.copy(message = "Already saved ${live.productName} at this price") }
+                _state.update { it.copy(message = tr(R.string.s_already_saved_x_at_this, live.productName)) }
                 return@launch
             }
             repository.recordPrice(
@@ -219,7 +221,7 @@ class ScanViewModel(
                 it.copy(
                     live = ShelfDraft(), known = null, lastHere = null,
                     savedThisSession = it.savedThisSession + 1,
-                    message = "Saved ${live.productName} · ${Money.format(price)}",
+                    message = tr(R.string.s_saved_x_x, live.productName, Money.format(price)),
                 )
             }
         }
@@ -234,14 +236,14 @@ class ScanViewModel(
                 val menu = _state.value.mode == ScanMode.MENU
                 val receipt = if (menu) com.amniscient.price.domain.MenuParser.parse(rows) else ReceiptParser.parse(rows)
                 if (receipt.items.isEmpty()) {
-                    _state.update { it.copy(message = if (menu) "No prices found. Get the item names and prices in the frame, or pick a screenshot." else "No items found. Flatten the receipt and try again in good light.") }
+                    _state.update { it.copy(message = if (menu) tr(R.string.s_no_prices_found_get_the) else tr(R.string.s_no_items_found_flatten_the)) }
                 } else {
                     session.pendingReceipt = receipt
                     session.pendingIsMenu = menu
                     onReady()
                 }
             } catch (e: Exception) {
-                _state.update { it.copy(message = "Couldn't read that image: ${e.message}") }
+                _state.update { it.copy(message = tr(R.string.s_couldn_t_read_that_image, e.message)) }
             } finally {
                 onFinally()
                 _state.update { it.copy(processing = false) }

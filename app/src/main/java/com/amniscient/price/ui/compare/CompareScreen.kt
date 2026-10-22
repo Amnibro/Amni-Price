@@ -1,5 +1,7 @@
 package com.amniscient.price.ui.compare
 
+import com.amniscient.price.R
+import com.amniscient.price.tr
 import androidx.compose.foundation.border
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -78,7 +80,7 @@ class CompareViewModel(repository: PriceRepository) : ViewModel() {
         repository.storeRanking.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), emptyList())
 }
 
-private enum class SortOrder(val label: String) { RECENT("Recently seen"), SAVINGS("Biggest price gap"), NAME("Name") }
+private enum class SortOrder(val label: String) { RECENT(tr(R.string.s_recently_seen)), SAVINGS(tr(R.string.s_biggest_price_gap)), NAME(tr(R.string.s_name)) }
 
 @Composable
 fun CompareScreen(
@@ -95,9 +97,9 @@ fun CompareScreen(
     Box(Modifier.fillMaxSize()) {
         Column(Modifier.fillMaxSize()) {
             AmniTopBar(
-                title = "Compare",
-                eyebrow = "${products.size} products · ${ranking.size} stores ranked",
-                actions = { IconButton(onClick = onManageStores) { Icon(Icons.Default.Storefront, "Manage stores") } },
+                title = tr(R.string.s_compare),
+                eyebrow = tr(R.string.s_x_products_x_stores_ranked, products.size, ranking.size),
+                actions = { IconButton(onClick = onManageStores) { Icon(Icons.Default.Storefront, tr(R.string.s_manage_stores)) } },
             )
             TabRow(
                 selectedTabIndex = tab,
@@ -111,7 +113,7 @@ fun CompareScreen(
                 },
                 divider = { androidx.compose.material3.HorizontalDivider(color = Amni.palette.hairline) },
             ) {
-                listOf("Products", "Cheapest stores").forEachIndexed { i, label ->
+                listOf(tr(R.string.s_products), tr(R.string.s_cheapest_stores)).forEachIndexed { i, label ->
                     Tab(
                         selected = tab == i,
                         onClick = { tab = i },
@@ -130,7 +132,7 @@ fun CompareScreen(
             ExtendedFloatingActionButton(
                 onClick = onAddManually,
                 icon = { Icon(Icons.Default.Add, null) },
-                text = { Text("Add price") },
+                text = { Text(tr(R.string.s_add_price)) },
                 shape = MaterialTheme.shapes.small,
                 containerColor = MaterialTheme.colorScheme.primary,
                 contentColor = MaterialTheme.colorScheme.onPrimary,
@@ -150,8 +152,8 @@ private fun ProductList(products: List<ProductSummary>, onOpenProduct: (Long) ->
     if (products.isEmpty()) {
         EmptyState(
             Icons.Default.Inventory2,
-            "No prices yet",
-            "Scan a shelf tag or receipt, or add a price by hand. Products show up here with the cheapest store for each.",
+            tr(R.string.s_no_prices_yet),
+            tr(R.string.s_scan_a_shelf_tag_or),
         )
         return
     }
@@ -175,13 +177,13 @@ private fun ProductList(products: List<ProductSummary>, onOpenProduct: (Long) ->
                 value = query,
                 onValueChange = { query = it },
                 leadingIcon = { Icon(Icons.Default.Search, null) },
-                placeholder = { Text("Search products or barcodes") },
+                placeholder = { Text(tr(R.string.s_search_products_or_barcodes)) },
                 singleLine = true,
                 shape = MaterialTheme.shapes.small,
                 modifier = Modifier.weight(1f),
             )
             Box {
-                IconButton(onClick = { sortMenu = true }) { Icon(Icons.AutoMirrored.Filled.Sort, "Sort") }
+                IconButton(onClick = { sortMenu = true }) { Icon(Icons.AutoMirrored.Filled.Sort, tr(R.string.s_sort)) }
                 DropdownMenu(expanded = sortMenu, onDismissRequest = { sortMenu = false }) {
                     SortOrder.entries.forEach { o ->
                         DropdownMenuItem(
@@ -197,7 +199,7 @@ private fun ProductList(products: List<ProductSummary>, onOpenProduct: (Long) ->
                 contentPadding = PaddingValues(horizontal = 16.dp, vertical = 8.dp),
                 horizontalArrangement = Arrangement.spacedBy(6.dp),
             ) {
-                item { CategoryChip("All", category == null) { category = null } }
+                item { CategoryChip(tr(R.string.s_all), category == null) { category = null } }
                 items(presentCategories) { c -> CategoryChip(c.label, category == c) { category = if (category == c) null else c } }
             }
         } else {
@@ -242,7 +244,7 @@ private fun ProductRow(summary: ProductSummary, onClick: () -> Unit) {
                     Tag(summary.product.category.label)
                     summary.product.sizeText?.let { Text(it, style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant) }
                     Text(
-                        if (summary.storeCount == 1) "1 store" else "${summary.storeCount} stores",
+                        if (summary.storeCount == 1) tr(R.string.s_1_store) else tr(R.string.s_x_stores, summary.storeCount),
                         style = MaterialTheme.typography.bodySmall,
                         color = MaterialTheme.colorScheme.onSurfaceVariant,
                     )
@@ -255,7 +257,7 @@ private fun ProductRow(summary: ProductSummary, onClick: () -> Unit) {
                         color = MaterialTheme.colorScheme.onSurfaceVariant)
                 }
                 if (summary.spreadCents > 0) {
-                    Text("save ${Money.format(summary.spreadCents)}", style = AmniText.priceSmall, color = Amni.palette.brass)
+                    Text(tr(R.string.s_save_x, Money.format(summary.spreadCents)), style = AmniText.priceSmall, color = Amni.palette.brass)
                 }
             }
         }
@@ -267,16 +269,16 @@ private fun StoreRanking(ranking: List<RankedStore>, onOpenStore: (Long) -> Unit
     if (ranking.isEmpty()) {
         EmptyState(
             Icons.Default.Storefront,
-            "Not enough to rank yet",
-            "Log the same products at two or more stores and Amni-Price will rank which one is cheapest overall.",
+            tr(R.string.s_not_enough_to_rank_yet),
+            tr(R.string.s_log_the_same_products_at),
         )
         return
     }
     LazyColumn(contentPadding = PaddingValues(16.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
         item {
             Text(
-                "Based on the latest price of every product seen at more than one store. " +
-                    "The percentage is how much more a store costs than the cheapest option, on average.",
+                tr(R.string.s_based_on_the_latest_price) +
+                    tr(R.string.s_the_percentage_is_how_much),
                 style = MaterialTheme.typography.bodySmall,
                 color = MaterialTheme.colorScheme.onSurfaceVariant,
                 modifier = Modifier.padding(bottom = 8.dp),
@@ -295,18 +297,18 @@ private fun StoreRanking(ranking: List<RankedStore>, onOpenStore: (Long) -> Unit
                     Column(Modifier.weight(1f).padding(horizontal = 16.dp)) {
                         Text(r.store.displayName, style = MaterialTheme.typography.titleMedium)
                         Text(
-                            "Cheapest on ${r.score.cheapestCount} of ${r.score.comparedProducts} compared items",
+                            tr(R.string.s_cheapest_on_x_of_x, r.score.cheapestCount, r.score.comparedProducts),
                             style = MaterialTheme.typography.bodySmall,
                             color = MaterialTheme.colorScheme.onSurfaceVariant,
                         )
                     }
                     Column(horizontalAlignment = Alignment.End) {
                         Text(
-                            if (premium <= 0) "BEST" else "+$premium%",
+                            if (premium <= 0) tr(R.string.s_best_2) else "+$premium%",
                             style = AmniText.price,
                             color = if (premium <= 0) Amni.palette.deal else Amni.palette.rise,
                         )
-                        Eyebrow(if (premium <= 0) "lowest" else "vs cheapest")
+                        Eyebrow(if (premium <= 0) tr(R.string.s_lowest) else tr(R.string.s_vs_cheapest_2))
                     }
                 }
             }

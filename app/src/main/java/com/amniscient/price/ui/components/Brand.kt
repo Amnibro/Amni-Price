@@ -1,5 +1,7 @@
 package com.amniscient.price.ui.components
 
+import com.amniscient.price.R
+import com.amniscient.price.tr
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
@@ -49,7 +51,7 @@ import kotlin.math.roundToInt
 
 /** The brand mark: a small accent square followed by condensed caps, as on amni-scient.com app bars. */
 @Composable
-fun BrandMark(modifier: Modifier = Modifier, text: String = "Amni-Price") {
+fun BrandMark(modifier: Modifier = Modifier, text: String = tr(R.string.s_amni_price)) {
     Row(modifier, verticalAlignment = Alignment.CenterVertically) {
         Box(Modifier.size(8.dp).background(MaterialTheme.colorScheme.primary))
         Spacer(Modifier.width(10.dp))
@@ -73,7 +75,7 @@ fun AmniTopBar(
             verticalAlignment = Alignment.CenterVertically,
         ) {
             if (onBack != null) {
-                IconButton(onClick = onBack) { Icon(Icons.AutoMirrored.Filled.ArrowBack, "Back") }
+                IconButton(onClick = onBack) { Icon(Icons.AutoMirrored.Filled.ArrowBack, tr(R.string.s_back)) }
             }
             Column(Modifier.weight(1f)) {
                 if (eyebrow != null) {

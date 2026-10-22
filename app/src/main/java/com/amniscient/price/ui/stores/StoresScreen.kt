@@ -1,5 +1,7 @@
 package com.amniscient.price.ui.stores
 
+import com.amniscient.price.R
+import com.amniscient.price.tr
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -84,12 +86,12 @@ fun StoresScreen(onBack: () -> Unit, onOpenStore: (Long) -> Unit) {
 
     Box(Modifier.fillMaxSize()) {
         Column(Modifier.fillMaxSize()) {
-            AmniTopBar(title = "Stores", eyebrow = "${stores.size} saved", onBack = onBack)
+            AmniTopBar(title = tr(R.string.s_stores), eyebrow = tr(R.string.s_x_saved, stores.size), onBack = onBack)
             if (stores.isEmpty()) {
                 EmptyState(
                     Icons.Default.Storefront,
-                    "No stores yet",
-                    "Add the stores you shop at. The selected one is used while scanning so each item is one tap.",
+                    tr(R.string.s_no_stores_yet),
+                    tr(R.string.s_add_the_stores_you_shop),
                 )
             } else {
                 LazyColumn(contentPadding = PaddingValues(16.dp, 16.dp, 16.dp, 96.dp)) {
@@ -104,7 +106,7 @@ fun StoresScreen(onBack: () -> Unit, onOpenStore: (Long) -> Unit) {
                                     IconButton(onClick = { vm.setCurrent(store.id) }) {
                                         Icon(
                                             if (store.id == currentId) Icons.Default.RadioButtonChecked else Icons.Default.RadioButtonUnchecked,
-                                            contentDescription = "Shopping here",
+                                            contentDescription = tr(R.string.s_shopping_here),
                                             tint = if (store.id == currentId) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.outline,
                                         )
                                     }
@@ -112,21 +114,21 @@ fun StoresScreen(onBack: () -> Unit, onOpenStore: (Long) -> Unit) {
                                         Text(store.name, style = MaterialTheme.typography.titleSmall)
                                         Text(
                                             listOfNotNull(
-                                                if (store.kind == com.amniscient.price.data.StoreKind.RESTAURANT) "Restaurant" else null,
+                                                if (store.kind == com.amniscient.price.data.StoreKind.RESTAURANT) tr(R.string.s_restaurant) else null,
                                                 store.location,
                                                 store.region,
-                                                if (store.position == null) "No map location" else null,
-                                                if (store.id == currentId) "Shopping here" else null,
-                                            ).joinToString(" · ").ifEmpty { "Tap for details" },
+                                                if (store.position == null) tr(R.string.s_no_map_location) else null,
+                                                if (store.id == currentId) tr(R.string.s_shopping_here) else null,
+                                            ).joinToString(" · ").ifEmpty { tr(R.string.s_tap_for_details) },
                                             style = MaterialTheme.typography.bodySmall,
                                             color = MaterialTheme.colorScheme.onSurfaceVariant,
                                         )
                                     }
                                     IconButton(onClick = { vm.update(store.copy(kind = if (store.kind == com.amniscient.price.data.StoreKind.RESTAURANT) com.amniscient.price.data.StoreKind.GROCERY else com.amniscient.price.data.StoreKind.RESTAURANT)) }) {
-                                        Icon(if (store.kind == com.amniscient.price.data.StoreKind.RESTAURANT) Icons.Default.Restaurant else Icons.Default.Storefront, if (store.kind == com.amniscient.price.data.StoreKind.RESTAURANT) "Restaurant, tap to mark as store" else "Store, tap to mark as restaurant", tint = if (store.kind == com.amniscient.price.data.StoreKind.RESTAURANT) Amni.palette.brass else MaterialTheme.colorScheme.onSurfaceVariant)
+                                        Icon(if (store.kind == com.amniscient.price.data.StoreKind.RESTAURANT) Icons.Default.Restaurant else Icons.Default.Storefront, if (store.kind == com.amniscient.price.data.StoreKind.RESTAURANT) tr(R.string.s_restaurant_tap_to_mark_as) else tr(R.string.s_store_tap_to_mark_as), tint = if (store.kind == com.amniscient.price.data.StoreKind.RESTAURANT) Amni.palette.brass else MaterialTheme.colorScheme.onSurfaceVariant)
                                     }
-                                    IconButton(onClick = { editing = store }) { Icon(Icons.Default.Edit, "Edit", tint = MaterialTheme.colorScheme.onSurfaceVariant) }
-                                    IconButton(onClick = { deleting = store }) { Icon(Icons.Default.Delete, "Delete", tint = MaterialTheme.colorScheme.onSurfaceVariant) }
+                                    IconButton(onClick = { editing = store }) { Icon(Icons.Default.Edit, tr(R.string.s_edit), tint = MaterialTheme.colorScheme.onSurfaceVariant) }
+                                    IconButton(onClick = { deleting = store }) { Icon(Icons.Default.Delete, tr(R.string.s_delete), tint = MaterialTheme.colorScheme.onSurfaceVariant) }
                                 }
                             }
                         }
@@ -137,7 +139,7 @@ fun StoresScreen(onBack: () -> Unit, onOpenStore: (Long) -> Unit) {
         ExtendedFloatingActionButton(
             onClick = { adding = true },
             icon = { Icon(Icons.Default.Add, null) },
-            text = { Text("Add store") },
+            text = { Text(tr(R.string.s_add_store)) },
             shape = MaterialTheme.shapes.small,
             containerColor = MaterialTheme.colorScheme.primary,
             contentColor = MaterialTheme.colorScheme.onPrimary,
@@ -147,7 +149,7 @@ fun StoresScreen(onBack: () -> Unit, onOpenStore: (Long) -> Unit) {
 
     if (adding) {
         StoreDialog(
-            title = "New store",
+            title = tr(R.string.s_new_store),
             onDismiss = { adding = false },
             onConfirm = { n, l, pin -> vm.add(n, l, pin); adding = false },
             offerPinHere = true,
@@ -155,7 +157,7 @@ fun StoresScreen(onBack: () -> Unit, onOpenStore: (Long) -> Unit) {
     }
     editing?.let { store ->
         StoreDialog(
-            title = "Edit store",
+            title = tr(R.string.s_edit_store),
             initialName = store.name,
             initialLocation = store.location.orEmpty(),
             onDismiss = { editing = null },
@@ -166,12 +168,12 @@ fun StoresScreen(onBack: () -> Unit, onOpenStore: (Long) -> Unit) {
         AlertDialog(
             onDismissRequest = { deleting = null },
             containerColor = Amni.palette.panel,
-            title = { Text("Delete ${store.name}?") },
-            text = { Text("Every price logged at this store is removed too. This can't be undone.") },
+            title = { Text(tr(R.string.s_delete_x, store.name)) },
+            text = { Text(tr(R.string.s_every_price_logged_at_this)) },
             confirmButton = {
-                TextButton(onClick = { vm.delete(store); deleting = null }) { Text("Delete", color = MaterialTheme.colorScheme.error) }
+                TextButton(onClick = { vm.delete(store); deleting = null }) { Text(tr(R.string.s_delete), color = MaterialTheme.colorScheme.error) }
             },
-            dismissButton = { TextButton(onClick = { deleting = null }) { Text("Cancel") } },
+            dismissButton = { TextButton(onClick = { deleting = null }) { Text(tr(R.string.s_cancel)) } },
         )
     }
 }

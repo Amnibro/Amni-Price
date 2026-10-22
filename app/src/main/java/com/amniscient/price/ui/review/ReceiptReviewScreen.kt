@@ -1,5 +1,7 @@
 package com.amniscient.price.ui.review
 
+import com.amniscient.price.R
+import com.amniscient.price.tr
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
@@ -202,7 +204,7 @@ fun ReceiptReviewScreen(onDone: () -> Unit) {
     var pickingDate by remember { mutableStateOf(false) }
 
     Column(Modifier.fillMaxSize().imePadding()) {
-        AmniTopBar(title = if (vm.isMenu) "Menu" else "Receipt", eyebrow = "${vm.rows.size} items found", onBack = onDone)
+        AmniTopBar(title = if (vm.isMenu) tr(R.string.s_menu) else tr(R.string.s_receipt), eyebrow = tr(R.string.s_x_items_found, vm.rows.size), onBack = onDone)
         LazyColumn(
             Modifier.weight(1f),
             contentPadding = PaddingValues(16.dp),
@@ -220,14 +222,14 @@ fun ReceiptReviewScreen(onDone: () -> Unit) {
                     Row(horizontalArrangement = Arrangement.spacedBy(8.dp), verticalAlignment = Alignment.CenterVertically) {
                         val detected = vm.detectedStore
                         if (detected != null && !vm.storeMatched) {
-                            AssistChip(onClick = { vm.addStore(detected, null, false) }, label = { Text("Create \"$detected\"") })
+                            AssistChip(onClick = { vm.addStore(detected, null, false) }, label = { Text(tr(R.string.s_create_x, detected)) })
                         }
                         AssistChip(
                             onClick = { pickingDate = true },
                             leadingIcon = { Icon(Icons.Default.CalendarMonth, null, Modifier.size(16.dp)) },
                             label = { Text(vm.date.format(DateTimeFormatter.ofLocalizedDate(FormatStyle.MEDIUM))) },
                         )
-                        if (vm.dateDetected) Tag("From receipt", color = Amni.palette.brass)
+                        if (vm.dateDetected) Tag(tr(R.string.s_from_receipt), color = Amni.palette.brass)
                     }
                     com.amniscient.price.ui.components.ChannelPicker(vm.channel, { vm.channel = it }, Modifier.fillMaxWidth())
                 }
@@ -236,10 +238,10 @@ fun ReceiptReviewScreen(onDone: () -> Unit) {
                 Panel {
                     Row(Modifier.padding(14.dp), verticalAlignment = Alignment.CenterVertically) {
                         Column(Modifier.weight(1f)) {
-                            Eyebrow("Items subtotal")
+                            Eyebrow(tr(R.string.s_items_subtotal))
                             vm.totalCents?.let {
                                 Text(
-                                    "Receipt total ${Money.format(it)} incl. tax",
+                                    tr(R.string.s_receipt_total_x_incl_tax, Money.format(it)),
                                     style = MaterialTheme.typography.bodySmall,
                                     color = MaterialTheme.colorScheme.onSurfaceVariant,
                                 )
@@ -256,7 +258,7 @@ fun ReceiptReviewScreen(onDone: () -> Unit) {
             enabled = vm.canSave,
             shape = MaterialTheme.shapes.small,
             modifier = Modifier.fillMaxWidth().padding(16.dp).height(52.dp),
-        ) { Text("Save ${vm.rows.size} prices") }
+        ) { Text(tr(R.string.s_save_x_prices, vm.rows.size)) }
     }
 
     if (pickingDate) {
@@ -269,9 +271,9 @@ fun ReceiptReviewScreen(onDone: () -> Unit) {
                 TextButton(onClick = {
                     state.selectedDateMillis?.let { vm.date = Instant.ofEpochMilli(it).atZone(ZoneOffset.UTC).toLocalDate() }
                     pickingDate = false
-                }) { Text("OK") }
+                }) { Text(tr(R.string.s_ok)) }
             },
-            dismissButton = { TextButton(onClick = { pickingDate = false }) { Text("Cancel") } },
+            dismissButton = { TextButton(onClick = { pickingDate = false }) { Text(tr(R.string.s_cancel)) } },
         ) { DatePicker(state) }
     }
 }
@@ -283,20 +285,20 @@ private fun ReceiptLine(row: ReceiptRow, onRemove: () -> Unit) {
             Row(verticalAlignment = Alignment.CenterVertically) {
                 OutlinedTextField(
                     value = row.name, onValueChange = { row.name = it },
-                    label = { Text(if (row.quantity > 1) "Item · ×${row.quantity}" else "Item") },
+                    label = { Text(if (row.quantity > 1) tr(R.string.s_item_x, row.quantity) else tr(R.string.s_item)) },
                     singleLine = true, shape = MaterialTheme.shapes.small,
                     modifier = Modifier.weight(1f),
                 )
                 Spacer(Modifier.width(8.dp))
                 OutlinedTextField(
                     value = row.price, onValueChange = { row.price = it },
-                    label = { Text(if (row.quantity > 1) "Each" else "Price") },
+                    label = { Text(if (row.quantity > 1) tr(R.string.s_each) else tr(R.string.s_price)) },
                     singleLine = true, prefix = { Text("$") }, shape = MaterialTheme.shapes.small,
                     textStyle = AmniText.priceSmall,
                     keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Decimal),
                     modifier = Modifier.width(104.dp),
                 )
-                IconButton(onClick = onRemove) { Icon(Icons.Default.Close, "Remove", tint = MaterialTheme.colorScheme.onSurfaceVariant) }
+                IconButton(onClick = onRemove) { Icon(Icons.Default.Close, tr(R.string.s_remove), tint = MaterialTheme.colorScheme.onSurfaceVariant) }
             }
             val match = row.matchName
             if (match != null) {
@@ -312,7 +314,7 @@ private fun ReceiptLine(row: ReceiptRow, onRemove: () -> Unit) {
                     )
                     Spacer(Modifier.width(6.dp))
                     Text(
-                        (if (row.linked) "Saving as " else "Tap to save as ") + match,
+                        (if (row.linked) tr(R.string.s_saving_as) else tr(R.string.s_tap_to_save_as)) + match,
                         style = MaterialTheme.typography.bodySmall,
                         color = if (row.linked) MaterialTheme.colorScheme.onSurface else MaterialTheme.colorScheme.onSurfaceVariant,
                         maxLines = 1,
@@ -320,7 +322,7 @@ private fun ReceiptLine(row: ReceiptRow, onRemove: () -> Unit) {
                     )
                 }
             }
-            if (row.discounted) Tag("Coupon applied", color = Amni.palette.brass, modifier = Modifier.padding(top = 6.dp))
+            if (row.discounted) Tag(tr(R.string.s_coupon_applied), color = Amni.palette.brass, modifier = Modifier.padding(top = 6.dp))
         }
     }
 }

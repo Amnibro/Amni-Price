@@ -1,5 +1,7 @@
 package com.amniscient.price.ui.scan
 
+import com.amniscient.price.R
+import com.amniscient.price.tr
 import android.Manifest
 import android.content.Context
 import android.content.pm.PackageManager
@@ -163,14 +165,14 @@ fun ScanScreen(
                     selectedId = currentStoreId,
                     onSelect = vm::selectStore,
                     onAddStore = vm::addStore,
-                    label = "Shopping at",
+                    label = tr(R.string.s_shopping_at),
                     modifier = Modifier.weight(1f),
                 )
                 if (state.savedThisSession > 0) {
                     Spacer(Modifier.width(12.dp))
                     Column(horizontalAlignment = Alignment.End) {
                         Text("${state.savedThisSession}", style = AmniText.price, color = Amni.palette.deal)
-                        Eyebrow("saved")
+                        Eyebrow(tr(R.string.s_saved))
                     }
                 }
             }
@@ -186,8 +188,8 @@ fun ScanScreen(
                 ) {
                     Icon(Icons.Default.NearMe, null, tint = Amni.palette.brass, modifier = Modifier.size(16.dp))
                     Spacer(Modifier.width(8.dp))
-                    Text("You're at ${s.displayName}? Tap to switch", style = MaterialTheme.typography.bodyMedium, modifier = Modifier.weight(1f))
-                    IconButton(onClick = vm::dismissSuggestion) { Icon(Icons.Default.Close, "Dismiss", Modifier.size(18.dp)) }
+                    Text(tr(R.string.s_you_re_at_x_tap, s.displayName), style = MaterialTheme.typography.bodyMedium, modifier = Modifier.weight(1f))
+                    IconButton(onClick = vm::dismissSuggestion) { Icon(Icons.Default.Close, tr(R.string.s_dismiss), Modifier.size(18.dp)) }
                 }
             }
             SingleChoiceSegmentedButtonRow(Modifier.fillMaxWidth().padding(16.dp, 10.dp)) {
@@ -241,7 +243,7 @@ fun ScanScreen(
             }
             if (state.mode != ScanMode.SHELF && hasCamera) {
                 Text(
-                    if (state.mode == ScanMode.MENU) "Fit the menu, or pick a delivery-app screenshot" else "Lay the receipt flat and fit it inside the frame",
+                    if (state.mode == ScanMode.MENU) tr(R.string.s_fit_the_menu_or_pick) else tr(R.string.s_lay_the_receipt_flat_and),
                     color = Color.White,
                     style = MaterialTheme.typography.bodyMedium,
                     textAlign = TextAlign.Center,
@@ -256,7 +258,7 @@ fun ScanScreen(
                     Column(horizontalAlignment = Alignment.CenterHorizontally) {
                         CircularProgressIndicator(color = Amni.palette.brass, strokeWidth = 2.dp)
                         Spacer(Modifier.height(12.dp))
-                        Eyebrow(if (state.mode == ScanMode.MENU) "Reading menu" else "Reading receipt", color = Color.White)
+                        Eyebrow(if (state.mode == ScanMode.MENU) tr(R.string.s_reading_menu) else tr(R.string.s_reading_receipt), color = Color.White)
                     }
                 }
             }
@@ -272,7 +274,7 @@ fun ScanScreen(
                 onClick = { pickImage.launch(PickVisualMediaRequest(ActivityResultContracts.PickVisualMedia.ImageOnly)) },
                 enabled = state.mode != ScanMode.SHELF,
                 colors = sideColors,
-            ) { Icon(Icons.Default.PhotoLibrary, "Pick photo or screenshot") }
+            ) { Icon(Icons.Default.PhotoLibrary, tr(R.string.s_pick_photo_or_screenshot)) }
 
             ShutterButton(enabled = hasCamera && !state.processing) {
                 when (state.mode) {
@@ -291,7 +293,7 @@ fun ScanScreen(
                 },
                 enabled = camera?.cameraInfo?.hasFlashUnit() == true,
                 colors = sideColors,
-            ) { Icon(if (torchOn) Icons.Default.FlashOn else Icons.Default.FlashOff, "Flashlight") }
+            ) { Icon(if (torchOn) Icons.Default.FlashOn else Icons.Default.FlashOff, tr(R.string.s_flashlight)) }
         }
     }
 }
@@ -327,7 +329,7 @@ private fun ShutterButton(enabled: Boolean, onClick: () -> Unit) {
 @Composable
 private fun ViewFinder(mode: ScanMode) {
     val brass = Amni.palette.brass
-    val heightFraction by animateFloatAsState(if (mode == ScanMode.SHELF) 0.34f else 0.86f, tween(300), label = "frame")
+    val heightFraction by animateFloatAsState(if (mode == ScanMode.SHELF) 0.34f else 0.86f, tween(300), label = tr(R.string.s_frame))
     Box(Modifier.fillMaxSize(), contentAlignment = if (mode == ScanMode.SHELF) Alignment.Center else Alignment.TopCenter) {
         Canvas(
             Modifier
@@ -370,21 +372,21 @@ private fun PermissionPrompt(onRequest: () -> Unit) {
         verticalArrangement = Arrangement.Center,
         horizontalAlignment = Alignment.CenterHorizontally,
     ) {
-        Eyebrow("Camera", color = Amni.palette.brass)
+        Eyebrow(tr(R.string.s_camera), color = Amni.palette.brass)
         Spacer(Modifier.height(8.dp))
         Text(
-            "Point, and the price is read for you.",
+            tr(R.string.s_point_and_the_price_is),
             color = Color.White, style = MaterialTheme.typography.titleLarge, textAlign = TextAlign.Center,
         )
         Spacer(Modifier.height(6.dp))
         Text(
-            "Images are processed on your phone and never uploaded.",
+            tr(R.string.s_images_are_processed_on_your),
             color = Color.White.copy(alpha = 0.7f),
             textAlign = TextAlign.Center,
             style = MaterialTheme.typography.bodyMedium,
         )
         Spacer(Modifier.height(20.dp))
-        Button(onClick = onRequest, shape = MaterialTheme.shapes.small) { Text("Allow camera") }
+        Button(onClick = onRequest, shape = MaterialTheme.shapes.small) { Text(tr(R.string.s_allow_camera)) }
     }
 }
 
@@ -406,7 +408,7 @@ private fun LiveResultCard(
                 CircularProgressIndicator(Modifier.size(14.dp), strokeWidth = 1.5.dp, color = Amni.palette.brass)
                 Spacer(Modifier.width(12.dp))
                 Text(
-                    if (hasStore) "Point at a price tag or barcode" else "Pick the store you're in, then point at a price tag",
+                    if (hasStore) tr(R.string.s_point_at_a_price_tag) else tr(R.string.s_pick_the_store_you_re),
                     style = MaterialTheme.typography.bodyMedium,
                 )
             }
@@ -416,7 +418,7 @@ private fun LiveResultCard(
             Row(verticalAlignment = Alignment.Top) {
                 Column(Modifier.weight(1f)) {
                     Text(
-                        live.productName.ifBlank { "Unknown product" },
+                        live.productName.ifBlank { tr(R.string.s_unknown_product) },
                         style = MaterialTheme.typography.titleMedium,
                         maxLines = 2,
                         overflow = TextOverflow.Ellipsis,
@@ -427,7 +429,7 @@ private fun LiveResultCard(
                             Text(live.barcode, style = AmniText.priceSmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
                         }
                         if (live.sizeText.isNotBlank()) Tag(live.sizeText)
-                        if (live.onSale) Tag("Sale", color = Amni.palette.brass)
+                        if (live.onSale) Tag(tr(R.string.s_sale), color = Amni.palette.brass)
                     }
                 }
                 Column(horizontalAlignment = Alignment.End) {
@@ -440,7 +442,7 @@ private fun LiveResultCard(
                         )?.let { TrendBadge(it) }
                     }
                 }
-                IconButton(onClick = onClear) { Icon(Icons.Default.Close, "Clear", tint = MaterialTheme.colorScheme.onSurfaceVariant) }
+                IconButton(onClick = onClear) { Icon(Icons.Default.Close, tr(R.string.s_clear), tint = MaterialTheme.colorScheme.onSurfaceVariant) }
             }
 
             state.known?.let { known ->
@@ -456,7 +458,7 @@ private fun LiveResultCard(
                             .padding(horizontal = 8.dp, vertical = 6.dp),
                         verticalAlignment = Alignment.CenterVertically,
                     ) {
-                        Eyebrow(if (better) "Cheaper at" else "Best known", Modifier.weight(1f))
+                        Eyebrow(if (better) tr(R.string.s_cheaper_at) else tr(R.string.s_best_known), Modifier.weight(1f))
                         Text("${known.cheapestStore} ", style = MaterialTheme.typography.bodySmall)
                         PriceText(cheapest, style = AmniText.priceSmall, color = if (better) Amni.palette.brass else Amni.palette.deal)
                     }
@@ -467,12 +469,12 @@ private fun LiveResultCard(
                 OutlinedButton(onClick = onEdit, shape = MaterialTheme.shapes.small, modifier = Modifier.weight(1f)) {
                     Icon(Icons.Default.Edit, null, Modifier.size(16.dp))
                     Spacer(Modifier.width(6.dp))
-                    Text("Review")
+                    Text(tr(R.string.s_review))
                 }
                 Button(onClick = onQuickSave, enabled = canQuickSave, shape = MaterialTheme.shapes.small, modifier = Modifier.weight(1f)) {
                     Icon(Icons.Default.Check, null, Modifier.size(16.dp))
                     Spacer(Modifier.width(6.dp))
-                    Text("Save")
+                    Text(tr(R.string.s_save))
                 }
             }
         }

@@ -1,5 +1,7 @@
 package com.amniscient.price.ui.onboarding
 
+import com.amniscient.price.R
+import com.amniscient.price.tr
 import androidx.compose.animation.animateColorAsState
 import androidx.compose.animation.core.animateDpAsState
 import androidx.compose.foundation.background
@@ -45,23 +47,23 @@ private data class Page(val icon: ImageVector, val title: String, val body: Stri
 private val pages = listOf(
     Page(
         Icons.Default.DocumentScanner,
-        "Point at any price tag.",
-        "The camera reads the price, name, size and barcode as you walk the aisle. One tap saves it to the store you're in.",
+        tr(R.string.s_point_at_any_price_tag),
+        tr(R.string.s_the_camera_reads_the_price),
     ),
     Page(
         Icons.AutoMirrored.Filled.ReceiptLong,
-        "Or snap the receipt.",
-        "Every line item is pulled out at once, with coupons applied and abbreviations matched to products you've already logged.",
+        tr(R.string.s_or_snap_the_receipt),
+        tr(R.string.s_every_line_item_is_pulled),
     ),
     Page(
         Icons.Default.Insights,
-        "See who's really cheapest.",
-        "Amni-Price ranks your stores, tracks price changes over time and plans the cheapest trip for your shopping list.",
+        tr(R.string.s_see_who_s_really_cheapest),
+        tr(R.string.s_amni_price_ranks_your_stores),
     ),
     Page(
         Icons.Default.Shield,
-        "Your data stays yours.",
-        "Retailers price with algorithms. This is your side of the shelf. Everything runs on your phone: no account, no uploads, no ads.",
+        tr(R.string.s_your_data_stays_yours),
+        tr(R.string.s_retailers_price_with_algorithms_this),
     ),
 )
 
@@ -74,7 +76,7 @@ fun OnboardingScreen(onDone: () -> Unit) {
     Column(Modifier.fillMaxSize().background(MaterialTheme.colorScheme.background).statusBarsPadding().padding(24.dp)) {
         Row(verticalAlignment = Alignment.CenterVertically) {
             BrandMark(modifier = Modifier.weight(1f))
-            if (!last) TextButton(onClick = onDone) { Text("Skip") }
+            if (!last) TextButton(onClick = onDone) { Text(tr(R.string.s_skip)) }
         }
         HorizontalPager(pager, Modifier.weight(1f)) { index ->
             val page = pages[index]
@@ -95,8 +97,8 @@ fun OnboardingScreen(onDone: () -> Unit) {
             Row(Modifier.weight(1f), horizontalArrangement = Arrangement.spacedBy(6.dp)) {
                 pages.indices.forEach { i ->
                     val active = i == pager.currentPage
-                    val w by animateDpAsState(if (active) 22.dp else 8.dp, label = "dot")
-                    val c by animateColorAsState(if (active) MaterialTheme.colorScheme.primary else Amni.palette.hairline, label = "dotColor")
+                    val w by animateDpAsState(if (active) 22.dp else 8.dp, label = tr(R.string.s_dot))
+                    val c by animateColorAsState(if (active) MaterialTheme.colorScheme.primary else Amni.palette.hairline, label = tr(R.string.s_dotcolor))
                     Box(Modifier.height(4.dp).width(w).background(c, MaterialTheme.shapes.extraSmall))
                 }
             }
@@ -104,7 +106,7 @@ fun OnboardingScreen(onDone: () -> Unit) {
                 onClick = { if (last) onDone() else scope.launch { pager.animateScrollToPage(pager.currentPage + 1) } },
                 shape = MaterialTheme.shapes.small,
                 modifier = Modifier.height(48.dp),
-            ) { Text(if (last) "Start saving" else "Next") }
+            ) { Text(if (last) tr(R.string.s_start_saving) else tr(R.string.s_next)) }
         }
         Spacer(Modifier.fillMaxWidth().height(8.dp))
     }

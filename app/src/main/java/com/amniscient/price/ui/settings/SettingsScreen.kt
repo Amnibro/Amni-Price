@@ -1,5 +1,7 @@
 package com.amniscient.price.ui.settings
 
+import com.amniscient.price.R
+import com.amniscient.price.tr
 import android.content.Context
 import android.content.Intent
 import android.net.Uri
@@ -74,7 +76,7 @@ class SettingsViewModel(val repository: PriceRepository, val settings: SettingsS
     suspend fun downloadCommunity(): Result<com.amniscient.price.data.CommunityResult> = runCatching {
         val stores = repository.allStores.first()
         val center = location.takeIf { it.hasPermission() }?.current() ?: stores.firstOrNull { it.id == settings.currentStoreId.value }?.position ?: stores.firstOrNull { it.position != null && it.externalId == null }?.position
-            ?: error("Turn on location, or pin one of your stores on the map, so we know which area to download")
+            ?: error(tr(R.string.s_turn_on_location_or_pin))
         val (pack, generated) = com.amniscient.price.data.CommunityPrices.fetch(center, settings.communityRadiusKm.value)
         val count = repository.importCommunity(pack)
         settings.setCommunityUpdated(generated.take(10))
@@ -91,13 +93,13 @@ class SettingsViewModel(val repository: PriceRepository, val settings: SettingsS
                 .resolve("amni-price-${LocalDate.now()}.csv")
                 .apply { writeText(csv) }
         }
-        val uri = FileProvider.getUriForFile(context, "${context.packageName}.files", file)
+        val uri = FileProvider.getUriForFile(context, tr(R.string.s_x_files, context.packageName), file)
         val share = Intent(Intent.ACTION_SEND)
             .setType("text/csv")
             .putExtra(Intent.EXTRA_STREAM, uri)
-            .putExtra(Intent.EXTRA_SUBJECT, "Amni-Price export")
+            .putExtra(Intent.EXTRA_SUBJECT, tr(R.string.s_amni_price_export))
             .addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION)
-        context.startActivity(Intent.createChooser(share, "Share price list"))
+        context.startActivity(Intent.createChooser(share, tr(R.string.s_share_price_list)))
     }
 
     suspend fun import(context: Context, uri: Uri): Result<Int> = runCatching {
@@ -133,28 +135,28 @@ fun SettingsScreen(onBack: () -> Unit, onManageStores: () -> Unit) {
     val importer = rememberLauncherForActivityResult(ActivityResultContracts.OpenDocument()) { uri ->
         if (uri != null) scope.launch {
             val result = vm.import(context, uri)
-            snackbar.showSnackbar(result.fold({ "Imported $it prices" }, { "Import failed: ${it.message}" }))
+            snackbar.showSnackbar(result.fold({ tr(R.string.s_imported_x_prices, it) }, { tr(R.string.s_import_failed_x, it.message) }))
         }
     }
 
     Column(Modifier.fillMaxSize()) {
-        AmniTopBar(title = "Settings", onBack = onBack)
+        AmniTopBar(title = tr(R.string.s_settings), onBack = onBack)
         Column(Modifier.verticalScroll(rememberScrollState()).padding(horizontal = 16.dp).padding(bottom = 24.dp)) {
-            SectionHeader("Appearance")
+            SectionHeader(tr(R.string.s_appearance))
             Panel {
                 Column(Modifier.padding(16.dp)) {
-                    Text("Theme", style = MaterialTheme.typography.bodyLarge)
+                    Text(tr(R.string.s_theme), style = MaterialTheme.typography.bodyLarge)
                     Spacer(Modifier.height(8.dp))
                     Segmented(ThemeMode.entries, theme, { it.label }, vm.settings::setTheme)
                 }
             }
 
-            SectionHeader("Units")
+            SectionHeader(tr(R.string.s_units))
             Panel {
                 Column(Modifier.padding(16.dp)) {
-                    Text("Unit prices", style = MaterialTheme.typography.bodyLarge)
+                    Text(tr(R.string.s_unit_prices), style = MaterialTheme.typography.bodyLarge)
                     Text(
-                        "How price per size is shown when comparing package sizes.",
+                        tr(R.string.s_how_price_per_size_is),
                         style = MaterialTheme.typography.bodySmall,
                         color = MaterialTheme.colorScheme.onSurfaceVariant,
                     )
@@ -163,13 +165,13 @@ fun SettingsScreen(onBack: () -> Unit, onManageStores: () -> Unit) {
                 }
             }
 
-            SectionHeader("Scanning")
+            SectionHeader(tr(R.string.s_scanning))
             Panel {
                 Row(Modifier.padding(16.dp), verticalAlignment = Alignment.CenterVertically) {
                     Column(Modifier.weight(1f)) {
-                        Text("Haptic feedback", style = MaterialTheme.typography.bodyLarge)
+                        Text(tr(R.string.s_haptic_feedback), style = MaterialTheme.typography.bodyLarge)
                         Text(
-                            "A light tick when a price or barcode is recognized.",
+                            tr(R.string.s_a_light_tick_when_a),
                             style = MaterialTheme.typography.bodySmall,
                             color = MaterialTheme.colorScheme.onSurfaceVariant,
                         )
@@ -178,102 +180,102 @@ fun SettingsScreen(onBack: () -> Unit, onManageStores: () -> Unit) {
                 }
             }
 
-            SectionHeader("Community prices")
+            SectionHeader(tr(R.string.s_community_prices))
             Panel {
                 Column(Modifier.padding(16.dp)) {
-                    Text("Prices near you from Open Prices", style = MaterialTheme.typography.bodyLarge)
+                    Text(tr(R.string.s_prices_near_you_from_open), style = MaterialTheme.typography.bodyLarge)
                     Text(
-                        "Download recent shelf and receipt prices that other shoppers shared with the open Open Prices database, for stores within the distance below. " +
-                            "They fill in the map and comparisons; your own scans and recent purchases stay separate. Your exact location never leaves the phone: the app requests whole 2° map tiles (about 200 km across) from GitHub.",
+                        tr(R.string.s_download_recent_shelf_and_receipt) +
+                            tr(R.string.s_they_fill_in_the_map),
                         style = MaterialTheme.typography.bodySmall,
                         color = MaterialTheme.colorScheme.onSurfaceVariant,
                     )
                     Spacer(Modifier.height(8.dp))
-                    Segmented(listOf(10, 25, 50, 100), communityRadius, { "$it km" }, vm.settings::setCommunityRadius)
+                    Segmented(listOf(10, 25, 50, 100), communityRadius, { tr(R.string.s_x_km, it) }, vm.settings::setCommunityRadius)
                 }
                 HorizontalDivider(color = Amni.palette.hairline)
                 NavRow(
                     Icons.Default.FileDownload,
-                    if (communityBusy) "Downloading…" else if (communityCount > 0) "Update community prices" else "Download community prices",
-                    if (communityCount > 0) "$communityCount prices · data from ${communityUpdated ?: "Open Prices"}" else "Within $communityRadius km of you",
+                    if (communityBusy) tr(R.string.s_downloading) else if (communityCount > 0) tr(R.string.s_update_community_prices) else tr(R.string.s_download_community_prices),
+                    if (communityCount > 0) tr(R.string.s_x_prices_data_from_x, communityCount, communityUpdated ?: tr(R.string.s_open_prices)) else tr(R.string.s_within_x_km_of_you, communityRadius),
                 ) {
                     if (!communityBusy) scope.launch {
                         communityBusy = true
                         val result = vm.downloadCommunity()
                         communityBusy = false
-                        snackbar.showSnackbar(result.fold({ if (it.prices == 0) "No community prices within $communityRadius km yet. Your scans can be the first." else "Added ${it.prices} prices from ${it.stores} stores" }, { it.message ?: "Download failed" }))
+                        snackbar.showSnackbar(result.fold({ if (it.prices == 0) tr(R.string.s_no_community_prices_within_x, communityRadius) else tr(R.string.s_added_x_prices_from_x, it.prices, it.stores) }, { it.message ?: tr(R.string.s_download_failed) }))
                     }
                 }
                 if (communityCount > 0) {
                     HorizontalDivider(color = Amni.palette.hairline)
-                    NavRow(Icons.Default.DeleteForever, "Remove community prices", "Keeps everything you scanned yourself") {
+                    NavRow(Icons.Default.DeleteForever, tr(R.string.s_remove_community_prices), tr(R.string.s_keeps_everything_you_scanned_yourself)) {
                         scope.launch {
                             vm.removeCommunity()
-                            snackbar.showSnackbar("Community prices removed")
+                            snackbar.showSnackbar(tr(R.string.s_community_prices_removed))
                         }
                     }
                 }
                 HorizontalDivider(color = Amni.palette.hairline)
-                NavRow(Icons.Default.Public, "Data: Open Prices · ODbL", "© Open Food Facts contributors. Tap for the license") {
+                NavRow(Icons.Default.Public, tr(R.string.s_data_open_prices_odbl), tr(R.string.s_open_food_facts_contributors_tap)) {
                     context.startActivity(Intent(Intent.ACTION_VIEW, Uri.parse(com.amniscient.price.data.CommunityPrices.LICENSE_URL)))
                 }
             }
-            SectionHeader("Data")
+            SectionHeader(tr(R.string.s_data))
             Panel {
-                NavRow(Icons.Default.Storefront, "Manage stores", "Rename, delete, choose where you're shopping", onClick = onManageStores)
+                NavRow(Icons.Default.Storefront, tr(R.string.s_manage_stores), tr(R.string.s_rename_delete_choose_where_you), onClick = onManageStores)
                 HorizontalDivider(color = Amni.palette.hairline)
-                NavRow(Icons.Default.FileDownload, "Export CSV", "Back up or share every price you've logged") {
+                NavRow(Icons.Default.FileDownload, tr(R.string.s_export_csv), tr(R.string.s_back_up_or_share_every)) {
                     scope.launch { vm.export(context) }
                 }
                 HorizontalDivider(color = Amni.palette.hairline)
-                NavRow(Icons.Default.FileUpload, "Import CSV", "Merge a price list from a friend or another phone") {
+                NavRow(Icons.Default.FileUpload, tr(R.string.s_import_csv), tr(R.string.s_merge_a_price_list_from)) {
                     importer.launch(arrayOf("text/*", "text/csv", "application/csv", "application/octet-stream"))
                 }
                 HorizontalDivider(color = Amni.palette.hairline)
                 if (BuildConfig.DEBUG) {
-                    NavRow(Icons.Default.Science, "Load sample data", "Debug builds only: four stores, eight weeks of prices") {
+                    NavRow(Icons.Default.Science, tr(R.string.s_load_sample_data), tr(R.string.s_debug_builds_only_four_stores)) {
                         scope.launch {
                             vm.loadSample()
-                            snackbar.showSnackbar("Sample data loaded")
+                            snackbar.showSnackbar(tr(R.string.s_sample_data_loaded))
                         }
                     }
                     HorizontalDivider(color = Amni.palette.hairline)
                 }
-                NavRow(Icons.Default.DeleteForever, "Erase all data", "Remove every store, product, price and list item", tint = MaterialTheme.colorScheme.error) {
+                NavRow(Icons.Default.DeleteForever, tr(R.string.s_erase_all_data), tr(R.string.s_remove_every_store_product_price), tint = MaterialTheme.colorScheme.error) {
                     confirmClear = true
                 }
             }
 
-            SectionHeader("Privacy")
+            SectionHeader(tr(R.string.s_privacy))
             Panel {
                 Row(Modifier.padding(16.dp)) {
                     Icon(Icons.Default.Shield, null, tint = Amni.palette.brass)
                     Spacer(Modifier.width(12.dp))
                     Text(
-                        "Text recognition and barcode scanning run on this phone. Photos are never saved or uploaded, " +
-                            "there are no accounts, ads or trackers, and your prices and location only leave the device when you export them. " +
-                            "Downloading community prices requests the map tiles covering your area from GitHub, which reveals only your rough region. " +
-                            "The price map downloads map images for the area you're viewing; nothing about your prices is sent.",
+                        tr(R.string.s_text_recognition_and_barcode_scanning) +
+                            tr(R.string.s_there_are_no_accounts_ads) +
+                            tr(R.string.s_downloading_community_prices_requests_th) +
+                            tr(R.string.s_the_price_map_downloads_map),
                         style = MaterialTheme.typography.bodyMedium,
                     )
                 }
             }
 
-            SectionHeader("About")
+            SectionHeader(tr(R.string.s_about))
             Panel {
                 Column(Modifier.padding(16.dp)) {
                     BrandMark()
                     Spacer(Modifier.height(8.dp))
-                    Text("Version ${BuildConfig.VERSION_NAME}", style = AmniText.priceSmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                    Text(tr(R.string.s_version_x, BuildConfig.VERSION_NAME), style = AmniText.priceSmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
                     Text(
-                        "Consumer-side price intelligence. Retailers use algorithms to set prices; this is yours.",
+                        tr(R.string.s_consumer_side_price_intelligence_retaile),
                         style = MaterialTheme.typography.bodySmall,
                         color = MaterialTheme.colorScheme.onSurfaceVariant,
                         modifier = Modifier.padding(top = 6.dp),
                     )
                 }
                 HorizontalDivider(color = Amni.palette.hairline)
-                NavRow(Icons.Default.Public, "amni-scient.com", "Made by Amniscient, LLC") {
+                NavRow(Icons.Default.Public, "amni-scient.com", tr(R.string.s_made_by_amniscient_llc)) {
                     context.startActivity(Intent(Intent.ACTION_VIEW, Uri.parse("https://amni-scient.com")))
                 }
             }
@@ -284,18 +286,18 @@ fun SettingsScreen(onBack: () -> Unit, onManageStores: () -> Unit) {
         AlertDialog(
             onDismissRequest = { confirmClear = false },
             containerColor = Amni.palette.panel,
-            title = { Text("Erase everything?") },
-            text = { Text("All stores, products, prices and your shopping list will be deleted. Export first if you want a backup.") },
+            title = { Text(tr(R.string.s_erase_everything)) },
+            text = { Text(tr(R.string.s_all_stores_products_prices_and)) },
             confirmButton = {
                 TextButton(onClick = {
                     confirmClear = false
                     scope.launch {
                         vm.clearAll()
-                        snackbar.showSnackbar("All data erased")
+                        snackbar.showSnackbar(tr(R.string.s_all_data_erased))
                     }
-                }) { Text("Erase", color = MaterialTheme.colorScheme.error) }
+                }) { Text(tr(R.string.s_erase), color = MaterialTheme.colorScheme.error) }
             },
-            dismissButton = { TextButton(onClick = { confirmClear = false }) { Text("Cancel") } },
+            dismissButton = { TextButton(onClick = { confirmClear = false }) { Text(tr(R.string.s_cancel)) } },
         )
     }
 }

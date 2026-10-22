@@ -1,5 +1,7 @@
 package com.amniscient.price.ui.components
 
+import com.amniscient.price.R
+import com.amniscient.price.tr
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.ExperimentalMaterial3Api
@@ -26,7 +28,7 @@ fun CategoryPicker(selected: Category, onSelect: (Category) -> Unit, modifier: M
             value = selected.label,
             onValueChange = {},
             readOnly = true,
-            label = { Text("Category") },
+            label = { Text(tr(R.string.s_category)) },
             trailingIcon = { ExposedDropdownMenuDefaults.TrailingIcon(expanded) },
             singleLine = true,
             shape = MaterialTheme.shapes.small,

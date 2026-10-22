@@ -1,5 +1,7 @@
 package com.amniscient.price.ui.components
 
+import com.amniscient.price.R
+import com.amniscient.price.tr
 import androidx.compose.material3.SnackbarDuration
 import androidx.compose.material3.SnackbarHostState
 import androidx.compose.material3.SnackbarResult
@@ -14,7 +16,7 @@ val LocalUiPrefs = staticCompositionLocalOf { UiPrefs(imperialUnits = true, hapt
 val LocalSnackbar = staticCompositionLocalOf { SnackbarHostState() }
 
 suspend fun SnackbarHostState.showUndo(message: String, onUndo: suspend () -> Unit) {
-    val result = showSnackbar(message, actionLabel = "Undo", withDismissAction = true, duration = SnackbarDuration.Short)
+    val result = showSnackbar(message, actionLabel = tr(R.string.s_undo), withDismissAction = true, duration = SnackbarDuration.Short)
     if (result == SnackbarResult.ActionPerformed) onUndo()
 }
 

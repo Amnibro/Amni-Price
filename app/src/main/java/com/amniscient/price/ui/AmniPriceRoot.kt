@@ -1,5 +1,7 @@
 package com.amniscient.price.ui
 
+import com.amniscient.price.R
+import com.amniscient.price.tr
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.WindowInsets
 import androidx.compose.foundation.layout.navigationBars
@@ -68,19 +70,19 @@ object Routes {
     const val PRODUCT = "product/{id}"
     const val REVIEW_SHELF = "review/shelf"
     const val REVIEW_RECEIPT = "review/receipt"
-    fun product(id: Long) = "product/$id"
-    fun store(id: Long) = "store/$id"
-    fun storeLocation(id: Long) = "store/$id/location"
+    fun product(id: Long) = tr(R.string.s_product_x, id)
+    fun store(id: Long) = tr(R.string.s_store_x, id)
+    fun storeLocation(id: Long) = tr(R.string.s_store_x_location, id)
 }
 
 private data class TopLevel(val route: String, val label: String, val icon: ImageVector)
 
 private val topLevel = listOf(
-    TopLevel(Routes.HOME, "Home", Icons.Default.SpaceDashboard),
-    TopLevel(Routes.SCAN, "Scan", Icons.Default.DocumentScanner),
-    TopLevel(Routes.COMPARE, "Compare", Icons.Default.Insights),
-    TopLevel(Routes.MAP, "Map", Icons.Default.Map),
-    TopLevel(Routes.LIST, "List", Icons.Default.Checklist),
+    TopLevel(Routes.HOME, tr(R.string.s_home), Icons.Default.SpaceDashboard),
+    TopLevel(Routes.SCAN, tr(R.string.s_scan), Icons.Default.DocumentScanner),
+    TopLevel(Routes.COMPARE, tr(R.string.s_compare), Icons.Default.Insights),
+    TopLevel(Routes.MAP, tr(R.string.s_map), Icons.Default.Map),
+    TopLevel(Routes.LIST, tr(R.string.s_list), Icons.Default.Checklist),
 )
 
 fun NavHostController.navigateTopLevel(route: String) = navigate(route) {

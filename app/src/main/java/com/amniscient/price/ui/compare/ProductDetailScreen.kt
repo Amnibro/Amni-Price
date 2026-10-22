@@ -1,5 +1,7 @@
 package com.amniscient.price.ui.compare
 
+import com.amniscient.price.R
+import com.amniscient.price.tr
 import android.content.Intent
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
@@ -110,7 +112,7 @@ class ProductDetailViewModel(
     fun shareText(): String? {
         val d = detail.value ?: return null
         val lines = d.byStore.joinToString("\n") { "• ${it.storeName}: ${Money.format(it.latest.priceCents)}" }
-        return "${d.product.name}${d.product.sizeText?.let { " ($it)" } ?: ""}\n$lines\n\nTracked with Amni-Price"
+        return tr(R.string.s_xx_nx_n_ntracked_with, d.product.name, d.product.sizeText?.let { " ($it)" } ?: "", lines)
     }
 }
 
@@ -132,19 +134,19 @@ fun ProductDetailScreen(
 
     Column(Modifier.fillMaxSize()) {
         AmniTopBar(
-            title = "Product",
+            title = tr(R.string.s_product),
             eyebrow = detail?.product?.category?.label,
             onBack = onBack,
             actions = {
                 IconButton(onClick = {
                     vm.shareText()?.let { text ->
                         context.startActivity(
-                            Intent.createChooser(Intent(Intent.ACTION_SEND).setType("text/plain").putExtra(Intent.EXTRA_TEXT, text), "Share prices"),
+                            Intent.createChooser(Intent(Intent.ACTION_SEND).setType("text/plain").putExtra(Intent.EXTRA_TEXT, text), tr(R.string.s_share_prices)),
                         )
                     }
-                }) { Icon(Icons.Default.Share, "Share") }
-                IconButton(onClick = { vm.prepareMap(); onViewOnMap() }) { Icon(Icons.Default.Map, "View on price map") }
-                IconButton(onClick = { editing = true }) { Icon(Icons.Default.Edit, "Edit product") }
+                }) { Icon(Icons.Default.Share, tr(R.string.s_share)) }
+                IconButton(onClick = { vm.prepareMap(); onViewOnMap() }) { Icon(Icons.Default.Map, tr(R.string.s_view_on_price_map)) }
+                IconButton(onClick = { editing = true }) { Icon(Icons.Default.Edit, tr(R.string.s_edit_product)) }
             },
         )
         val d = detail ?: return@Column
@@ -165,7 +167,7 @@ fun ProductDetailScreen(
                     Spacer(Modifier.height(16.dp))
                     Panel(highlighted = d.byStore.size > 1) {
                         Column(Modifier.padding(16.dp)) {
-                            Eyebrow(if (d.byStore.size > 1) "Cheapest" else "Latest price", color = Amni.palette.brass)
+                            Eyebrow(if (d.byStore.size > 1) tr(R.string.s_cheapest) else tr(R.string.s_latest_price), color = Amni.palette.brass)
                             Row(verticalAlignment = Alignment.Bottom) {
                                 PriceText(best.latest.priceCents, style = AmniText.hero, color = if (d.byStore.size > 1) Amni.palette.deal else MaterialTheme.colorScheme.onSurface)
                                 Spacer(Modifier.width(12.dp))
@@ -177,7 +179,7 @@ fun ProductDetailScreen(
                             if (worst != null && worst != best && worst.latest.priceCents > best.latest.priceCents) {
                                 Spacer(Modifier.height(6.dp))
                                 Text(
-                                    "Up to ${Money.format(worst.latest.priceCents)} at ${worst.storeName}: you save " +
+                                    tr(R.string.s_up_to_x_at_x, Money.format(worst.latest.priceCents), worst.storeName) +
                                         Money.format(worst.latest.priceCents - best.latest.priceCents),
                                     style = MaterialTheme.typography.bodySmall,
                                 )
@@ -192,7 +194,7 @@ fun ProductDetailScreen(
                         onClick = {
                             scope.launch {
                                 vm.addToList(d.product)
-                                snackbar.showSnackbar("Added to your list")
+                                snackbar.showSnackbar(tr(R.string.s_added_to_your_list))
                             }
                         },
                         shape = MaterialTheme.shapes.small,
@@ -200,21 +202,21 @@ fun ProductDetailScreen(
                     ) {
                         Icon(Icons.Default.AddShoppingCart, null, Modifier.size(18.dp))
                         Spacer(Modifier.width(6.dp))
-                        Text("Add to list")
+                        Text(tr(R.string.s_add_to_list))
                     }
                     Button(onClick = { vm.prepareAddPrice(); onAddPrice() }, shape = MaterialTheme.shapes.small, modifier = Modifier.weight(1f)) {
                         Icon(Icons.Default.PostAdd, null, Modifier.size(18.dp))
                         Spacer(Modifier.width(6.dp))
-                        Text("Log price")
+                        Text(tr(R.string.s_log_price))
                     }
                 }
             }
             item {
-                SectionHeader("Price history")
+                SectionHeader(tr(R.string.s_price_history))
                 PriceChart(d.history.filter { it.price.channel == com.amniscient.price.data.PriceChannel.IN_STORE })
             }
             item {
-                SectionHeader("By store")
+                SectionHeader(tr(R.string.s_by_store))
                 Panel {
                     d.byStore.forEachIndexed { i, sp ->
                         if (i > 0) HorizontalDivider(color = Amni.palette.hairline)
@@ -226,7 +228,7 @@ fun ProductDetailScreen(
                             Column(Modifier.weight(1f)) {
                                 Row(verticalAlignment = Alignment.CenterVertically) {
                                     Text(sp.storeName, style = MaterialTheme.typography.titleSmall)
-                                    if (sp.latest.onSale) Tag("Sale", color = Amni.palette.brass, modifier = Modifier.padding(start = 6.dp))
+                                    if (sp.latest.onSale) Tag(tr(R.string.s_sale), color = Amni.palette.brass, modifier = Modifier.padding(start = 6.dp))
                                 }
                                 val sub = buildList {
                                     add(relativeTime(sp.latest.observedAt))
@@ -241,7 +243,7 @@ fun ProductDetailScreen(
                                 if (diff > 0) {
                                     Text("+${Money.format(diff)}", style = AmniText.priceSmall, color = Amni.palette.rise)
                                 } else if (cheapest) {
-                                    Eyebrow("Cheapest", color = Amni.palette.deal)
+                                    Eyebrow(tr(R.string.s_cheapest), color = Amni.palette.deal)
                                 }
                             }
                         }
@@ -250,14 +252,14 @@ fun ProductDetailScreen(
             }
             if (d.markups.isNotEmpty()) item {
                 val names = d.history.associate { it.price.storeId to it.storeName }
-                SectionHeader("Apps & delivery vs in store")
+                SectionHeader(tr(R.string.s_apps_delivery_vs_in_store))
                 Panel {
                     d.markups.sortedByDescending { it.percent }.forEachIndexed { i, m ->
                         if (i > 0) HorizontalDivider(color = Amni.palette.hairline)
                         Row(Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 12.dp), verticalAlignment = Alignment.CenterVertically) {
                             Column(Modifier.weight(1f)) {
                                 Text(com.amniscient.price.data.PriceChannel.valueOf(m.channel).label, style = MaterialTheme.typography.titleSmall)
-                                Text("${names[m.storeId].orEmpty()} · in store ${Money.format(m.baseCents)}", style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                                Text(tr(R.string.s_x_in_store_x, names[m.storeId].orEmpty(), Money.format(m.baseCents)), style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
                             }
                             Column(horizontalAlignment = Alignment.End) {
                                 PriceText(m.priceCents)
@@ -268,7 +270,7 @@ fun ProductDetailScreen(
                 }
             }
             item {
-                SectionHeader("Every observation")
+                SectionHeader(tr(R.string.s_every_observation))
                 Panel {
                     d.history.forEachIndexed { i, h ->
                         if (i > 0) HorizontalDivider(color = Amni.palette.hairline)
@@ -276,7 +278,7 @@ fun ProductDetailScreen(
                             Column(Modifier.weight(1f)) {
                                 Text(h.storeName, style = MaterialTheme.typography.bodyMedium, maxLines = 1, overflow = TextOverflow.Ellipsis)
                                 Text(
-                                    relativeTime(h.price.observedAt) + " · " + h.price.source.name.lowercase() + (if (h.price.channel != com.amniscient.price.data.PriceChannel.IN_STORE) " · " + h.price.channel.label else "") + if (h.price.onSale) " · sale" else "",
+                                    relativeTime(h.price.observedAt) + " · " + h.price.source.name.lowercase() + (if (h.price.channel != com.amniscient.price.data.PriceChannel.IN_STORE) " · " + h.price.channel.label else "") + if (h.price.onSale) tr(R.string.s_sale_2) else "",
                                     style = MaterialTheme.typography.bodySmall,
                                     color = MaterialTheme.colorScheme.onSurfaceVariant,
                                 )
@@ -285,9 +287,9 @@ fun ProductDetailScreen(
                             IconButton(onClick = {
                                 scope.launch {
                                     vm.deletePrice(h.price)
-                                    snackbar.showUndo("Price removed") { vm.restorePrice(h.price) }
+                                    snackbar.showUndo(tr(R.string.s_price_removed)) { vm.restorePrice(h.price) }
                                 }
-                            }) { Icon(Icons.Default.Delete, "Delete entry", tint = MaterialTheme.colorScheme.onSurfaceVariant) }
+                            }) { Icon(Icons.Default.Delete, tr(R.string.s_delete_entry), tint = MaterialTheme.colorScheme.onSurfaceVariant) }
                         }
                     }
                 }
@@ -320,21 +322,21 @@ private fun EditProductDialog(
         onDismissRequest = onDismiss,
         shape = MaterialTheme.shapes.extraLarge,
         containerColor = Amni.palette.panel,
-        title = { Text("Edit product") },
+        title = { Text(tr(R.string.s_edit_product)) },
         text = {
             Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
-                OutlinedTextField(name, { name = it }, label = { Text("Name") }, singleLine = true, shape = MaterialTheme.shapes.small)
-                OutlinedTextField(size, { size = it }, label = { Text("Size") }, singleLine = true, shape = MaterialTheme.shapes.small)
+                OutlinedTextField(name, { name = it }, label = { Text(tr(R.string.s_name)) }, singleLine = true, shape = MaterialTheme.shapes.small)
+                OutlinedTextField(size, { size = it }, label = { Text(tr(R.string.s_size)) }, singleLine = true, shape = MaterialTheme.shapes.small)
                 CategoryPicker(category, { category = it })
                 TextButton(onClick = { if (confirmDelete) onDelete() else confirmDelete = true }) {
                     Text(
-                        if (confirmDelete) "Tap again to delete permanently" else "Delete product and all its prices",
+                        if (confirmDelete) tr(R.string.s_tap_again_to_delete_permanently) else tr(R.string.s_delete_product_and_all_its),
                         color = MaterialTheme.colorScheme.error,
                     )
                 }
             }
         },
-        confirmButton = { TextButton(enabled = name.isNotBlank(), onClick = { onSave(name, size, category) }) { Text("Save") } },
-        dismissButton = { TextButton(onClick = onDismiss) { Text("Cancel") } },
+        confirmButton = { TextButton(enabled = name.isNotBlank(), onClick = { onSave(name, size, category) }) { Text(tr(R.string.s_save)) } },
+        dismissButton = { TextButton(onClick = onDismiss) { Text(tr(R.string.s_cancel)) } },
     )
 }

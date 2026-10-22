@@ -1,5 +1,7 @@
 package com.amniscient.price.ui.stores
 
+import com.amniscient.price.R
+import com.amniscient.price.tr
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
@@ -83,14 +85,14 @@ fun StoreDetailScreen(storeId: Long, onBack: () -> Unit, onOpenProduct: (Long) -
     val snackbar = LocalSnackbar.current
     val scope = rememberCoroutineScope()
     val pin: () -> Unit = {
-        scope.launch { snackbar.showSnackbar(if (vm.pinHere()) "Pinned to your location" else "Couldn't get a location fix") }
+        scope.launch { snackbar.showSnackbar(if (vm.pinHere()) tr(R.string.s_pinned_to_your_location) else tr(R.string.s_couldn_t_get_a_location)) }
     }
     val askLocation = rememberLocationPermission { granted -> if (granted) pin() }
     val detail by vm.detail.collectAsStateWithLifecycle()
     val current by vm.currentStoreId.collectAsStateWithLifecycle()
 
     Column(Modifier.fillMaxSize()) {
-        AmniTopBar(title = detail?.store?.name ?: "Store", eyebrow = detail?.store?.location ?: "Store", onBack = onBack)
+        AmniTopBar(title = detail?.store?.name ?: tr(R.string.s_store), eyebrow = detail?.store?.location ?: tr(R.string.s_store), onBack = onBack)
         val d = detail ?: return@Column
         val cheaperHere = d.items.count { it.cheapestElsewhere != null && it.priceCents <= it.cheapestElsewhere }
         val compared = d.items.count { it.cheapestElsewhere != null }
@@ -98,13 +100,13 @@ fun StoreDetailScreen(storeId: Long, onBack: () -> Unit, onOpenProduct: (Long) -
         LazyColumn(contentPadding = PaddingValues(16.dp)) {
             item {
                 Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                    StatTile("Rank", d.rank?.let { "#$it" } ?: "—", Modifier.weight(1f), valueColor = if (d.rank == 1) Amni.palette.brass else MaterialTheme.colorScheme.onSurface)
+                    StatTile(tr(R.string.s_rank), d.rank?.let { "#$it" } ?: "—", Modifier.weight(1f), valueColor = if (d.rank == 1) Amni.palette.brass else MaterialTheme.colorScheme.onSurface)
                     val premium = d.score?.let { ((it.index - 1) * 100).roundToInt() }
                     StatTile(
-                        "Vs cheapest",
+                        tr(R.string.s_vs_cheapest),
                         when {
                             premium == null -> "—"
-                            premium <= 0 -> "Best"
+                            premium <= 0 -> tr(R.string.s_best)
                             else -> "+$premium%"
                         },
                         Modifier.weight(1f),
@@ -117,12 +119,12 @@ fun StoreDetailScreen(storeId: Long, onBack: () -> Unit, onOpenProduct: (Long) -
                 }
                 Spacer(Modifier.height(8.dp))
                 Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                    StatTile("Items", d.items.size.toString(), Modifier.weight(1f))
-                    StatTile("Visits", d.visits.toString(), Modifier.weight(1f))
+                    StatTile(tr(R.string.s_items), d.items.size.toString(), Modifier.weight(1f))
+                    StatTile(tr(R.string.s_visits), d.visits.toString(), Modifier.weight(1f))
                 }
                 if (compared > 0) {
                     Text(
-                        "Cheapest or tied on $cheaperHere of $compared items you've also seen elsewhere.",
+                        tr(R.string.s_cheapest_or_tied_on_x, cheaperHere, compared),
                         style = MaterialTheme.typography.bodySmall,
                         color = MaterialTheme.colorScheme.onSurfaceVariant,
                         modifier = Modifier.padding(top = 10.dp),
@@ -131,16 +133,16 @@ fun StoreDetailScreen(storeId: Long, onBack: () -> Unit, onOpenProduct: (Long) -
                 Spacer(Modifier.height(12.dp))
                 if (current == d.store.id) {
                     OutlinedButton(onClick = {}, enabled = false, shape = MaterialTheme.shapes.small, modifier = Modifier.fillMaxWidth()) {
-                        Text("You're shopping here")
+                        Text(tr(R.string.s_you_re_shopping_here))
                     }
                 } else {
                     Button(onClick = { vm.setCurrent(d.store.id) }, shape = MaterialTheme.shapes.small, modifier = Modifier.fillMaxWidth()) {
-                        Text("I'm shopping here")
+                        Text(tr(R.string.s_i_m_shopping_here))
                     }
                 }
             }
             item {
-                SectionHeader("Location")
+                SectionHeader(tr(R.string.s_location))
                 Panel {
                     Row(Modifier.padding(16.dp), verticalAlignment = Alignment.CenterVertically) {
                         Icon(Icons.Default.Place, null, tint = Amni.palette.brass)
@@ -148,11 +150,11 @@ fun StoreDetailScreen(storeId: Long, onBack: () -> Unit, onOpenProduct: (Long) -
                         Column(Modifier.weight(1f)) {
                             val pos = d.store.position
                             Text(
-                                if (pos == null) "Not on the price map yet" else d.store.region ?: "On the map",
+                                if (pos == null) tr(R.string.s_not_on_the_price_map) else d.store.region ?: tr(R.string.s_on_the_map),
                                 style = MaterialTheme.typography.titleSmall,
                             )
                             Text(
-                                if (pos == null) "Add a location to compare prices by area." else "%.4f, %.4f".format(pos.lat, pos.lng),
+                                if (pos == null) tr(R.string.s_add_a_location_to_compare) else "%.4f, %.4f".format(pos.lat, pos.lng),
                                 style = if (pos == null) MaterialTheme.typography.bodySmall else AmniText.priceSmall,
                                 color = MaterialTheme.colorScheme.onSurfaceVariant,
                             )
@@ -163,19 +165,19 @@ fun StoreDetailScreen(storeId: Long, onBack: () -> Unit, onOpenProduct: (Long) -
                         TextButton(onClick = { if (vm.hasLocationPermission()) pin() else askLocation() }) {
                             Icon(Icons.Default.MyLocation, null, Modifier.size(16.dp))
                             Spacer(Modifier.width(6.dp))
-                            Text("I'm here now")
+                            Text(tr(R.string.s_i_m_here_now))
                         }
                         TextButton(onClick = { onSetLocation(d.store.id) }) {
                             Icon(Icons.Default.Map, null, Modifier.size(16.dp))
                             Spacer(Modifier.width(6.dp))
-                            Text("Pick on map")
+                            Text(tr(R.string.s_pick_on_map))
                         }
                     }
                 }
             }
             if (d.items.isNotEmpty()) {
                 item {
-                    SectionHeader("Prices here")
+                    SectionHeader(tr(R.string.s_prices_here))
                     Panel {
                         d.items.forEachIndexed { i, item ->
                             if (i > 0) HorizontalDivider(color = Amni.palette.hairline)
@@ -194,10 +196,10 @@ fun StoreDetailScreen(storeId: Long, onBack: () -> Unit, onOpenProduct: (Long) -
                                         color = if (elsewhere != null && item.priceCents <= elsewhere) Amni.palette.deal else MaterialTheme.colorScheme.onSurface,
                                     )
                                     when {
-                                        elsewhere == null -> Eyebrow("only here")
-                                        item.priceCents < elsewhere -> Text("−${Money.format(elsewhere - item.priceCents)} vs others", style = AmniText.priceSmall, color = Amni.palette.deal)
-                                        item.priceCents > elsewhere -> Text("+${Money.format(item.priceCents - elsewhere)} vs best", style = AmniText.priceSmall, color = Amni.palette.rise)
-                                        else -> Eyebrow("tied")
+                                        elsewhere == null -> Eyebrow(tr(R.string.s_only_here))
+                                        item.priceCents < elsewhere -> Text(tr(R.string.s_x_vs_others, Money.format(elsewhere - item.priceCents)), style = AmniText.priceSmall, color = Amni.palette.deal)
+                                        item.priceCents > elsewhere -> Text(tr(R.string.s_x_vs_best, Money.format(item.priceCents - elsewhere)), style = AmniText.priceSmall, color = Amni.palette.rise)
+                                        else -> Eyebrow(tr(R.string.s_tied))
                                     }
                                 }
                             }

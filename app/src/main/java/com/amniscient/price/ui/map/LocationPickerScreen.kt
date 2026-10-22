@@ -1,5 +1,7 @@
 package com.amniscient.price.ui.map
 
+import com.amniscient.price.R
+import com.amniscient.price.tr
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.layout.Arrangement
@@ -107,7 +109,7 @@ fun LocationPickerScreen(storeId: Long, onDone: () -> Unit) {
     }
 
     Column(Modifier.fillMaxSize().imePadding()) {
-        AmniTopBar(title = "Set location", eyebrow = store?.displayName, onBack = onDone)
+        AmniTopBar(title = tr(R.string.s_set_location), eyebrow = store?.displayName, onBack = onDone)
         Box(Modifier.weight(1f).fillMaxWidth()) {
             if (ready) {
                 LocationPickerMap(start, controller, Modifier.fillMaxSize(), tilesOnline = LocalMapTilesOnline.current)
@@ -123,7 +125,7 @@ fun LocationPickerScreen(storeId: Long, onDone: () -> Unit) {
                 },
                 colors = IconButtonDefaults.filledTonalIconButtonColors(containerColor = Amni.palette.panel),
                 modifier = Modifier.align(Alignment.BottomEnd).padding(12.dp).offset(y = (-16).dp),
-            ) { Icon(Icons.Default.MyLocation, "Go to my location") }
+            ) { Icon(Icons.Default.MyLocation, tr(R.string.s_go_to_my_location)) }
             Text(
                 MapTiles.attribution,
                 style = MaterialTheme.typography.labelSmall,
@@ -131,7 +133,7 @@ fun LocationPickerScreen(storeId: Long, onDone: () -> Unit) {
                 modifier = Modifier.align(Alignment.BottomEnd).background(Amni.palette.panel.copy(alpha = 0.85f)).padding(horizontal = 6.dp, vertical = 2.dp),
             )
             Text(
-                "Drag the map so the ring sits on the store",
+                tr(R.string.s_drag_the_map_so_the),
                 style = MaterialTheme.typography.bodySmall,
                 modifier = Modifier.align(Alignment.TopCenter).padding(12.dp)
                     .background(Amni.palette.panel.copy(alpha = 0.92f), MaterialTheme.shapes.small)
@@ -139,11 +141,11 @@ fun LocationPickerScreen(storeId: Long, onDone: () -> Unit) {
             )
         }
         Column(Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(10.dp)) {
-            Eyebrow("Area")
+            Eyebrow(tr(R.string.s_area))
             OutlinedTextField(
                 value = vm.region,
                 onValueChange = { vm.region = it },
-                placeholder = { Text("Town or neighborhood (filled in automatically)") },
+                placeholder = { Text(tr(R.string.s_town_or_neighborhood_filled_in)) },
                 singleLine = true,
                 shape = MaterialTheme.shapes.small,
                 keyboardOptions = KeyboardOptions(capitalization = KeyboardCapitalization.Words),
@@ -151,20 +153,20 @@ fun LocationPickerScreen(storeId: Long, onDone: () -> Unit) {
             )
             Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                 if (store?.position != null) {
-                    OutlinedButton(onClick = { vm.clear(); onDone() }, shape = MaterialTheme.shapes.small) { Text("Remove") }
+                    OutlinedButton(onClick = { vm.clear(); onDone() }, shape = MaterialTheme.shapes.small) { Text(tr(R.string.s_remove)) }
                 }
                 Button(
                     onClick = {
                         val center = controller.center ?: return@Button
                         scope.launch {
                             vm.save(center)
-                            snackbar.showSnackbar("Location saved")
+                            snackbar.showSnackbar(tr(R.string.s_location_saved))
                             onDone()
                         }
                     },
                     shape = MaterialTheme.shapes.small,
                     modifier = Modifier.weight(1f).height(48.dp),
-                ) { Text("Save location") }
+                ) { Text(tr(R.string.s_save_location)) }
             }
         }
     }

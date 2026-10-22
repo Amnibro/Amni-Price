@@ -1,5 +1,7 @@
 package com.amniscient.price.ui.compare
 
+import com.amniscient.price.R
+import com.amniscient.price.tr
 import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.background
 import androidx.compose.foundation.gestures.detectDragGestures
@@ -74,7 +76,7 @@ fun PriceChart(history: List<PriceWithStore>, modifier: Modifier = Modifier) {
     val allPoints = series.flatMap { it.points }
     if (allPoints.size < 2) {
         Text(
-            "Log this product again, or at another store, to see its price history.",
+            tr(R.string.s_log_this_product_again_or),
             style = MaterialTheme.typography.bodySmall,
             color = MaterialTheme.colorScheme.onSurfaceVariant,
             modifier = modifier.padding(vertical = 8.dp),
@@ -216,7 +218,7 @@ fun PriceChart(history: List<PriceWithStore>, modifier: Modifier = Modifier) {
             }
             if (storeIds.size > shown.size) {
                 Text(
-                    "+${storeIds.size - shown.size} more stores listed below",
+                    tr(R.string.s_x_more_stores_listed_below, storeIds.size - shown.size),
                     style = MaterialTheme.typography.bodySmall,
                     color = MaterialTheme.colorScheme.onSurfaceVariant,
                     modifier = Modifier.padding(top = 4.dp),

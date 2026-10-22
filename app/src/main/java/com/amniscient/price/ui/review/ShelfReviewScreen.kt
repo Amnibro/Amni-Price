@@ -1,5 +1,7 @@
 package com.amniscient.price.ui.review
 
+import com.amniscient.price.R
+import com.amniscient.price.tr
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
@@ -172,8 +174,8 @@ fun ShelfReviewScreen(onDone: () -> Unit) {
 
     Column(Modifier.fillMaxSize().imePadding()) {
         AmniTopBar(
-            title = if (vm.fromScan) "Confirm price" else "Add price",
-            eyebrow = if (vm.fromScan) "Scanned" else "Manual entry",
+            title = if (vm.fromScan) tr(R.string.s_confirm_price) else tr(R.string.s_add_price),
+            eyebrow = if (vm.fromScan) tr(R.string.s_scanned) else tr(R.string.s_manual_entry),
             onBack = onDone,
         )
         Column(
@@ -182,20 +184,20 @@ fun ShelfReviewScreen(onDone: () -> Unit) {
         ) {
             if (vm.fromScan) {
                 Text(
-                    "Check what the camera read and fix anything that's off.",
+                    tr(R.string.s_check_what_the_camera_read),
                     style = MaterialTheme.typography.bodyMedium,
                     color = MaterialTheme.colorScheme.onSurfaceVariant,
                 )
             }
             OutlinedTextField(
                 value = vm.name, onValueChange = vm::onNameChange,
-                label = { Text("Product") }, singleLine = true, shape = MaterialTheme.shapes.small,
+                label = { Text(tr(R.string.s_product)) }, singleLine = true, shape = MaterialTheme.shapes.small,
                 keyboardOptions = KeyboardOptions(capitalization = KeyboardCapitalization.Words),
                 modifier = Modifier.fillMaxWidth(),
             )
             OutlinedTextField(
                 value = vm.price, onValueChange = { vm.price = it },
-                label = { Text("Price") }, singleLine = true, prefix = { Text("$") }, shape = MaterialTheme.shapes.small,
+                label = { Text(tr(R.string.s_price)) }, singleLine = true, prefix = { Text("$") }, shape = MaterialTheme.shapes.small,
                 textStyle = AmniText.price,
                 keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Decimal),
                 modifier = Modifier.fillMaxWidth(),
@@ -203,13 +205,13 @@ fun ShelfReviewScreen(onDone: () -> Unit) {
             Row(horizontalArrangement = Arrangement.spacedBy(12.dp)) {
                 OutlinedTextField(
                     value = vm.size, onValueChange = { vm.size = it },
-                    label = { Text("Size") }, placeholder = { Text("12 oz") }, singleLine = true,
+                    label = { Text(tr(R.string.s_size)) }, placeholder = { Text(tr(R.string.s_12_oz)) }, singleLine = true,
                     shape = MaterialTheme.shapes.small,
                     modifier = Modifier.weight(1f),
                 )
                 OutlinedTextField(
                     value = vm.barcode, onValueChange = { vm.barcode = it },
-                    label = { Text("Barcode") }, singleLine = true, shape = MaterialTheme.shapes.small,
+                    label = { Text(tr(R.string.s_barcode)) }, singleLine = true, shape = MaterialTheme.shapes.small,
                     keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
                     modifier = Modifier.weight(1f),
                 )
@@ -218,7 +220,7 @@ fun ShelfReviewScreen(onDone: () -> Unit) {
             val cents = vm.priceCents
             if (quantity != null && cents != null) {
                 Row(verticalAlignment = Alignment.CenterVertically) {
-                    Eyebrow("Unit price", Modifier.weight(1f))
+                    Eyebrow(tr(R.string.s_unit_price), Modifier.weight(1f))
                     Text(UnitParser.unitPriceLabel(cents, quantity, imperial), style = AmniText.priceSmall, color = MaterialTheme.colorScheme.primary)
                 }
             }
@@ -233,9 +235,9 @@ fun ShelfReviewScreen(onDone: () -> Unit) {
             CategoryPicker(vm.category, vm::onCategoryChange, Modifier.fillMaxWidth())
             Row(verticalAlignment = Alignment.CenterVertically) {
                 Column(Modifier.weight(1f)) {
-                    Text("Sale or promo price", style = MaterialTheme.typography.bodyLarge)
+                    Text(tr(R.string.s_sale_or_promo_price), style = MaterialTheme.typography.bodyLarge)
                     Text(
-                        "Marked so temporary deals don't skew comparisons.",
+                        tr(R.string.s_marked_so_temporary_deals_don),
                         style = MaterialTheme.typography.bodySmall,
                         color = MaterialTheme.colorScheme.onSurfaceVariant,
                     )
@@ -251,7 +253,7 @@ fun ShelfReviewScreen(onDone: () -> Unit) {
                 enabled = vm.canSave,
                 shape = MaterialTheme.shapes.small,
                 modifier = Modifier.fillMaxWidth().height(52.dp),
-            ) { Text("Save price") }
+            ) { Text(tr(R.string.s_save_price)) }
         }
     }
 }
@@ -261,10 +263,10 @@ private fun ContextPanel(known: ProductSummary?, lastHere: PriceEntity?, current
     if (known == null) return
     Panel {
         Column(Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
-            Eyebrow("You've seen this before", color = Amni.palette.brass)
+            Eyebrow(tr(R.string.s_you_ve_seen_this_before), color = Amni.palette.brass)
             if (lastHere != null) {
                 Row(verticalAlignment = Alignment.CenterVertically) {
-                    Text("Last time here · ${relativeTime(lastHere.observedAt)}", Modifier.weight(1f), style = MaterialTheme.typography.bodyMedium)
+                    Text(tr(R.string.s_last_time_here_x, relativeTime(lastHere.observedAt)), Modifier.weight(1f), style = MaterialTheme.typography.bodyMedium)
                     PriceText(lastHere.priceCents, style = AmniText.priceSmall)
                     if (currentCents != null) {
                         PriceInsights.changeAgainst(
@@ -279,7 +281,7 @@ private fun ContextPanel(known: ProductSummary?, lastHere: PriceEntity?, current
             if (known.cheapestCents != null) {
                 HorizontalDivider(color = Amni.palette.hairline)
                 Row(verticalAlignment = Alignment.CenterVertically) {
-                    Text("Best known · ${known.cheapestStore}", Modifier.weight(1f), style = MaterialTheme.typography.bodyMedium)
+                    Text(tr(R.string.s_best_known_x, known.cheapestStore), Modifier.weight(1f), style = MaterialTheme.typography.bodyMedium)
                     PriceText(known.cheapestCents, style = AmniText.priceSmall, color = Amni.palette.deal)
                 }
             }

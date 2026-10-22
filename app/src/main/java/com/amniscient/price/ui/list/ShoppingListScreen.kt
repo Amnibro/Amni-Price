@@ -1,5 +1,7 @@
 package com.amniscient.price.ui.list
 
+import com.amniscient.price.R
+import com.amniscient.price.tr
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -108,10 +110,10 @@ fun ShoppingListScreen(onOpenProduct: (Long) -> Unit, onOpenStore: (Long) -> Uni
         val open = p?.entries?.filterNot { it.item.checked }.orEmpty()
         val done = p?.entries?.filter { it.item.checked }.orEmpty()
         AmniTopBar(
-            title = "Shopping list",
-            eyebrow = if (open.isEmpty()) "Plan the cheapest trip" else "${open.size} to get",
+            title = tr(R.string.s_shopping_list),
+            eyebrow = if (open.isEmpty()) tr(R.string.s_plan_the_cheapest_trip) else tr(R.string.s_x_to_get, open.size),
             actions = {
-                if (done.isNotEmpty()) IconButton(onClick = vm::clearChecked) { Icon(Icons.Default.DeleteSweep, "Clear checked") }
+                if (done.isNotEmpty()) IconButton(onClick = vm::clearChecked) { Icon(Icons.Default.DeleteSweep, tr(R.string.s_clear_checked)) }
             },
         )
         AddItemField(products, onAdd = vm::add)
@@ -120,8 +122,8 @@ fun ShoppingListScreen(onOpenProduct: (Long) -> Unit, onOpenStore: (Long) -> Uni
         if (p.entries.isEmpty()) {
             EmptyState(
                 Icons.Default.Checklist,
-                "Your list is empty",
-                "Add what you need. Amni-Price works out which store, or which two stores, gets it all for the least.",
+                tr(R.string.s_your_list_is_empty),
+                tr(R.string.s_add_what_you_need_amni),
             )
             return@Column
         }
@@ -130,7 +132,7 @@ fun ShoppingListScreen(onOpenProduct: (Long) -> Unit, onOpenStore: (Long) -> Uni
         val delete: (ShoppingItemEntity) -> Unit = { item ->
             scope.launch {
                 vm.delete(item)
-                snackbar.showUndo("Removed ${item.name}") { vm.restore(item) }
+                snackbar.showUndo(tr(R.string.s_removed_x, item.name)) { vm.restore(item) }
             }
         }
 
@@ -143,7 +145,7 @@ fun ShoppingListScreen(onOpenProduct: (Long) -> Unit, onOpenStore: (Long) -> Uni
                 val entries = groups[storeId].orEmpty()
                 if (entries.isNotEmpty()) {
                     item(key = "h$storeId") {
-                        SectionHeader("Buy at ${p.storeNames[storeId] ?: "store"}", action = {
+                        SectionHeader(tr(R.string.s_buy_at_x, p.storeNames[storeId] ?: "store"), action = {
                             PriceText(entries.sumOf { (assignment[it.item.id]?.unitCents ?: 0) * it.item.quantity }, style = AmniText.priceSmall)
                         })
                     }
@@ -153,11 +155,11 @@ fun ShoppingListScreen(onOpenProduct: (Long) -> Unit, onOpenStore: (Long) -> Uni
                 }
             }
             groups[null]?.let { unpriced ->
-                item(key = "hnone") { SectionHeader("No price yet") }
+                item(key = "hnone") { SectionHeader(tr(R.string.s_no_price_yet)) }
                 items(unpriced, key = { it.item.id }) { e -> ListRow(e, null, vm::toggle, vm::setQuantity, delete, onOpenProduct) }
             }
             if (done.isNotEmpty()) {
-                item(key = "hdone") { SectionHeader("In the cart · ${done.size}") }
+                item(key = "hdone") { SectionHeader(tr(R.string.s_in_the_cart_x, done.size)) }
                 items(done, key = { it.item.id }) { e -> ListRow(e, null, vm::toggle, vm::setQuantity, delete, onOpenProduct) }
             }
         }
@@ -183,7 +185,7 @@ private fun AddItemField(products: List<ProductEntity>, onAdd: (String, Long?) -
             OutlinedTextField(
                 value = text,
                 onValueChange = { text = it; expanded = true },
-                placeholder = { Text("Add an item, e.g. milk") },
+                placeholder = { Text(tr(R.string.s_add_an_item_e_g)) },
                 singleLine = true,
                 shape = MaterialTheme.shapes.small,
                 keyboardOptions = KeyboardOptions(capitalization = KeyboardCapitalization.Sentences, imeAction = ImeAction.Done),
@@ -198,7 +200,7 @@ private fun AddItemField(products: List<ProductEntity>, onAdd: (String, Long?) -
         }
         Spacer(Modifier.width(8.dp))
         FilledIconButton(onClick = { submit() }, enabled = text.isNotBlank(), shape = MaterialTheme.shapes.small) {
-            Icon(Icons.Default.Add, "Add")
+            Icon(Icons.Default.Add, tr(R.string.s_add))
         }
     }
 }
@@ -212,7 +214,7 @@ private fun PlanPanel(p: ShoppingPlan, onOpenStore: (Long) -> Unit) {
             Row(verticalAlignment = Alignment.CenterVertically) {
                 Icon(Icons.Default.Route, null, tint = Amni.palette.brass, modifier = Modifier.size(18.dp))
                 Spacer(Modifier.width(8.dp))
-                Eyebrow("Cheapest trip", color = Amni.palette.brass)
+                Eyebrow(tr(R.string.s_cheapest_trip), color = Amni.palette.brass)
             }
             Spacer(Modifier.height(6.dp))
             Row(verticalAlignment = Alignment.Bottom) {
@@ -225,8 +227,8 @@ private fun PlanPanel(p: ShoppingPlan, onOpenStore: (Long) -> Unit) {
             }
             Text(
                 buildString {
-                    append("${best.covered} of ${p.plan.pricedCount + p.plan.unpriced.size} items priced")
-                    if (p.plan.savingsVsHighest > 0) append(" · saves ${Money.format(p.plan.savingsVsHighest)} vs. highest prices")
+                    append(tr(R.string.s_x_of_x_items_priced, best.covered, p.plan.pricedCount + p.plan.unpriced.size))
+                    if (p.plan.savingsVsHighest > 0) append(tr(R.string.s_saves_x_vs_highest_prices, Money.format(p.plan.savingsVsHighest)))
                 },
                 style = MaterialTheme.typography.bodySmall,
                 color = MaterialTheme.colorScheme.onSurfaceVariant,
@@ -238,9 +240,9 @@ private fun PlanPanel(p: ShoppingPlan, onOpenStore: (Long) -> Unit) {
                     verticalAlignment = Alignment.CenterVertically,
                 ) {
                     Column(Modifier.weight(1f)) {
-                        Eyebrow("One stop instead")
+                        Eyebrow(tr(R.string.s_one_stop_instead))
                         Text(
-                            "${p.storeNames[single.storeId]} · ${single.covered} of ${p.plan.pricedCount} items",
+                            tr(R.string.s_x_x_of_x_items, p.storeNames[single.storeId], single.covered, p.plan.pricedCount),
                             style = MaterialTheme.typography.bodyMedium,
                         )
                     }
@@ -275,7 +277,7 @@ private fun ListRow(
         state = dismiss,
         backgroundContent = {
             Box(Modifier.fillMaxSize().padding(horizontal = 20.dp), contentAlignment = Alignment.CenterEnd) {
-                Eyebrow("Remove", color = MaterialTheme.colorScheme.error)
+                Eyebrow(tr(R.string.s_remove), color = MaterialTheme.colorScheme.error)
             }
         },
         modifier = Modifier.padding(bottom = 6.dp),
@@ -299,16 +301,16 @@ private fun ListRow(
                         overflow = TextOverflow.Ellipsis,
                     )
                     if (entry.product == null && !item.checked) {
-                        Text("Not matched to a scanned product yet", style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                        Text(tr(R.string.s_not_matched_to_a_scanned), style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
                     }
                 }
                 if (!item.checked) {
                     IconButton(onClick = { onQuantity(item, item.quantity - 1) }, enabled = item.quantity > 1, modifier = Modifier.size(32.dp)) {
-                        Icon(Icons.Default.Remove, "Less", Modifier.size(16.dp))
+                        Icon(Icons.Default.Remove, tr(R.string.s_less), Modifier.size(16.dp))
                     }
                     Text("${item.quantity}", style = AmniText.priceSmall)
                     IconButton(onClick = { onQuantity(item, item.quantity + 1) }, modifier = Modifier.size(32.dp)) {
-                        Icon(Icons.Default.Add, "More", Modifier.size(16.dp))
+                        Icon(Icons.Default.Add, tr(R.string.s_more), Modifier.size(16.dp))
                     }
                 }
                 val cents = plannedCents ?: entry.cheapestCents

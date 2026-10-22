@@ -1,5 +1,7 @@
 package com.amniscient.price.ui.map
 
+import com.amniscient.price.R
+import com.amniscient.price.tr
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
@@ -131,21 +133,21 @@ fun MapScreen(
     val product = products.firstOrNull { it.product.id == productId }
     val basket = productId == null
     val format: (Double) -> String = if (basket) {
-        { v -> if (v <= 1.005) "BEST" else "+" + formatPercent((v - 1) * 100) }
+        { v -> if (v <= 1.005) tr(R.string.s_best_2) else "+" + formatPercent((v - 1) * 100) }
     } else {
         { v -> Money.format(v.toLong()) }
     }
 
     Column(Modifier.fillMaxSize()) {
         AmniTopBar(
-            title = "Price map",
-            eyebrow = if (basket) "Overall · store price index" else product?.product?.name ?: "Product",
+            title = tr(R.string.s_price_map),
+            eyebrow = if (basket) tr(R.string.s_overall_store_price_index) else product?.product?.name ?: tr(R.string.s_product),
             actions = {
                 IconButton(onClick = { vm.showRegions.value = !showRegions }) {
-                    Icon(if (showRegions) Icons.Default.Layers else Icons.Default.LayersClear, "Toggle regions")
+                    Icon(if (showRegions) Icons.Default.Layers else Icons.Default.LayersClear, tr(R.string.s_toggle_regions))
                 }
                 IconButton(onClick = { if (vm.hasLocationPermission()) vm.locate() else askLocation() }) {
-                    Icon(Icons.Default.MyLocation, "My location", tint = if (here != null) Amni.palette.brass else MaterialTheme.colorScheme.onSurface)
+                    Icon(Icons.Default.MyLocation, tr(R.string.s_my_location), tint = if (here != null) Amni.palette.brass else MaterialTheme.colorScheme.onSurface)
                 }
             },
         )
@@ -156,13 +158,13 @@ fun MapScreen(
         if (d.located.isEmpty()) {
             EmptyState(
                 Icons.Default.Map,
-                if (d.unlocated.isEmpty()) "Nothing to map yet" else "Put your stores on the map",
+                if (d.unlocated.isEmpty()) tr(R.string.s_nothing_to_map_yet) else tr(R.string.s_put_your_stores_on_the),
                 if (d.unlocated.isEmpty()) {
-                    "Log prices at a few stores, then give each store a location to compare prices by area."
+                    tr(R.string.s_log_prices_at_a_few)
                 } else {
-                    "${d.unlocated.size} stores have prices but no location. Open a store and tap Set location, or pin new stores while you're in them."
+                    tr(R.string.s_x_stores_have_prices_but, d.unlocated.size)
                 },
-                actionLabel = "Manage stores",
+                actionLabel = tr(R.string.s_manage_stores),
                 onAction = onManageStores,
             )
             return@Column
@@ -209,25 +211,25 @@ fun MapScreen(
             }
             if (d.regions.size > 1) {
                 item {
-                    SectionHeader(if (basket) "Cheapest areas overall" else "Price by area")
+                    SectionHeader(if (basket) tr(R.string.s_cheapest_areas_overall) else tr(R.string.s_price_by_area))
                     RegionTable(d.regions, d, basket, format)
                 }
             }
             item {
-                SectionHeader(if (here != null) "Cheapest near you" else "Cheapest stores")
+                SectionHeader(if (here != null) tr(R.string.s_cheapest_near_you) else tr(R.string.s_cheapest_stores))
                 NearbyTable(d, here, imperial, format, onSelect = { vm.selectedStore.value = it })
                 if (here == null) {
                     TextButton(onClick = { if (vm.hasLocationPermission()) vm.locate() else askLocation() }) {
                         Icon(Icons.Default.MyLocation, null, Modifier.size(16.dp))
                         Spacer(Modifier.width(6.dp))
-                        Text("Show distances from me")
+                        Text(tr(R.string.s_show_distances_from_me))
                     }
                 }
             }
             if (d.unlocated.isNotEmpty()) {
                 item {
                     Text(
-                        "${d.unlocated.size} more store${if (d.unlocated.size == 1) "" else "s"} with prices aren't on the map yet.",
+                        tr(R.string.s_x_more_storex_with_prices, d.unlocated.size, if (d.unlocated.size == 1) "" else "s"),
                         style = MaterialTheme.typography.bodySmall,
                         color = MaterialTheme.colorScheme.onSurfaceVariant,
                         modifier = Modifier.padding(top = 10.dp).clickable(onClick = onManageStores),
@@ -260,9 +262,9 @@ private fun ProductSelector(product: ProductSummary?, basket: Boolean, onClick: 
         Icon(Icons.Default.Search, null, tint = Amni.palette.brass, modifier = Modifier.size(18.dp))
         Spacer(Modifier.width(10.dp))
         Column(Modifier.weight(1f)) {
-            Eyebrow(if (basket) "Comparing" else "Find the lowest price for")
+            Eyebrow(if (basket) tr(R.string.s_comparing) else tr(R.string.s_find_the_lowest_price_for))
             Text(
-                if (basket) "All products (whole basket)" else product?.product?.name ?: "Choose a product",
+                if (basket) tr(R.string.s_all_products_whole_basket) else product?.product?.name ?: tr(R.string.s_choose_a_product),
                 style = MaterialTheme.typography.titleSmall,
                 maxLines = 1,
                 overflow = TextOverflow.Ellipsis,
@@ -282,9 +284,9 @@ private fun Legend(modifier: Modifier) {
             .padding(horizontal = 10.dp, vertical = 8.dp),
         verticalArrangement = Arrangement.spacedBy(4.dp),
     ) {
-        LegendRow(p.deal, filled = true, "Cheapest")
-        LegendRow(p.ink, filled = false, "Within 10%")
-        LegendRow(p.rise, filled = false, "Higher")
+        LegendRow(p.deal, filled = true, tr(R.string.s_cheapest))
+        LegendRow(p.ink, filled = false, tr(R.string.s_within_10))
+        LegendRow(p.rise, filled = false, tr(R.string.s_higher))
     }
 }
 
@@ -327,7 +329,7 @@ private fun SelectedStore(
             Column(horizontalAlignment = Alignment.End) {
                 Text(format(point.value), style = AmniText.price, color = bandColor(band))
                 if (point.priceCents != null && point.value > cheapest) {
-                    Text("+${Money.format((point.value - cheapest).toLong())} vs cheapest", style = AmniText.priceSmall, color = Amni.palette.rise)
+                    Text(tr(R.string.s_x_vs_cheapest, Money.format((point.value - cheapest).toLong())), style = AmniText.priceSmall, color = Amni.palette.rise)
                 }
             }
             Spacer(Modifier.width(8.dp))
@@ -351,7 +353,7 @@ private fun RegionTable(regions: List<RegionStat>, data: MapData, basket: Boolea
                 Column(Modifier.weight(1f)) {
                     Text(r.label, style = MaterialTheme.typography.titleSmall)
                     Text(
-                        "${r.storeIds.size} store${if (r.storeIds.size == 1) "" else "s"} · best: ${names[r.cheapestStoreId] ?: "—"}" +
+                        tr(R.string.s_x_storex_best_x, r.storeIds.size, if (r.storeIds.size == 1) "" else "s", names[r.cheapestStoreId] ?: "—") +
                             if (basket) "" else " ${format(r.min)}",
                         style = MaterialTheme.typography.bodySmall,
                         color = MaterialTheme.colorScheme.onSurfaceVariant,
@@ -363,7 +365,7 @@ private fun RegionTable(regions: List<RegionStat>, data: MapData, basket: Boolea
                     // Basket mode compares indexes, so one number (vs. the cheapest area) says it all.
                     if (!basket) Text(format(r.average), style = AmniText.priceSmall)
                     Text(
-                        if (i == 0) "CHEAPEST AREA" else "+" + formatPercent(r.premiumPercent),
+                        if (i == 0) tr(R.string.s_cheapest_area) else "+" + formatPercent(r.premiumPercent),
                         style = if (i == 0) AmniText.eyebrow else AmniText.priceSmall,
                         color = if (i == 0) Amni.palette.deal else Amni.palette.rise,
                     )
@@ -373,9 +375,9 @@ private fun RegionTable(regions: List<RegionStat>, data: MapData, basket: Boolea
     }
     Text(
         if (basket) {
-            "How much more a typical basket costs in each area than in the cheapest one, from every product compared at 2+ stores."
+            tr(R.string.s_how_much_more_a_typical)
         } else {
-            "Average latest price across the stores in each area, and how it compares with the cheapest area."
+            tr(R.string.s_average_latest_price_across_the)
         },
         style = MaterialTheme.typography.bodySmall,
         color = MaterialTheme.colorScheme.onSurfaceVariant,
@@ -426,12 +428,12 @@ private fun ProductPickerDialog(products: List<ProductSummary>, onDismiss: () ->
         onDismissRequest = onDismiss,
         containerColor = Amni.palette.panel,
         shape = MaterialTheme.shapes.extraLarge,
-        title = { Text("Compare on the map") },
+        title = { Text(tr(R.string.s_compare_on_the_map)) },
         text = {
             Column {
                 OutlinedTextField(
                     query, { query = it },
-                    placeholder = { Text("Search products") },
+                    placeholder = { Text(tr(R.string.s_search_products)) },
                     leadingIcon = { Icon(Icons.Default.Search, null) },
                     singleLine = true, shape = MaterialTheme.shapes.small,
                     modifier = Modifier.fillMaxWidth(),
@@ -439,20 +441,20 @@ private fun ProductPickerDialog(products: List<ProductSummary>, onDismiss: () ->
                 Spacer(Modifier.height(8.dp))
                 LazyColumn(Modifier.heightIn(max = 360.dp)) {
                     item {
-                        PickerRow("All products", "Whole-basket store price index", onClick = { onPick(null) })
+                        PickerRow(tr(R.string.s_all_products), tr(R.string.s_whole_basket_store_price_index), onClick = { onPick(null) })
                         HorizontalDivider(color = Amni.palette.hairline)
                     }
                     items(shown, key = { it.product.id }) { s ->
                         PickerRow(
                             s.product.name,
-                            "${s.storeCount} store${if (s.storeCount == 1) "" else "s"}" + (s.cheapestCents?.let { " · from ${Money.format(it)}" } ?: ""),
+                            tr(R.string.s_x_storex, s.storeCount, if (s.storeCount == 1) "" else "s") + (s.cheapestCents?.let { tr(R.string.s_from_x, Money.format(it)) } ?: ""),
                             onClick = { onPick(s.product.id) },
                         )
                     }
                 }
             }
         },
-        confirmButton = { TextButton(onClick = onDismiss) { Text("Close") } },
+        confirmButton = { TextButton(onClick = onDismiss) { Text(tr(R.string.s_close)) } },
     )
 }
 

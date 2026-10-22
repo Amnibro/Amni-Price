@@ -1,5 +1,7 @@
 package com.amniscient.price.ui.components
 
+import com.amniscient.price.R
+import com.amniscient.price.tr
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
@@ -45,7 +47,7 @@ fun StorePicker(
     onSelect: (Long) -> Unit,
     onAddStore: (name: String, location: String?, pinHere: Boolean) -> Unit,
     modifier: Modifier = Modifier,
-    label: String = "Store",
+    label: String = tr(R.string.s_store),
 ) {
     var expanded by remember { mutableStateOf(false) }
     var showAdd by remember { mutableStateOf(false) }
@@ -57,7 +59,7 @@ fun StorePicker(
             onValueChange = {},
             readOnly = true,
             label = { Text(label) },
-            placeholder = { Text("Choose a store") },
+            placeholder = { Text(tr(R.string.s_choose_a_store)) },
             leadingIcon = { Icon(Icons.Default.Storefront, null, tint = Amni.palette.brass) },
             trailingIcon = { ExposedDropdownMenuDefaults.TrailingIcon(expanded) },
             singleLine = true,
@@ -72,7 +74,7 @@ fun StorePicker(
                 )
             }
             DropdownMenuItem(
-                text = { Text("Add new store…") },
+                text = { Text(tr(R.string.s_add_new_store)) },
                 leadingIcon = { Icon(Icons.Default.Add, null) },
                 onClick = { expanded = false; showAdd = true },
             )
@@ -81,7 +83,7 @@ fun StorePicker(
 
     if (showAdd) {
         StoreDialog(
-            title = "New store",
+            title = tr(R.string.s_new_store),
             onDismiss = { showAdd = false },
             onConfirm = { name, location, pinHere -> onAddStore(name, location, pinHere); showAdd = false },
             offerPinHere = true,
@@ -116,7 +118,7 @@ fun StoreDialog(
                 OutlinedTextField(
                     value = name,
                     onValueChange = { name = it },
-                    label = { Text("Name") },
+                    label = { Text(tr(R.string.s_name)) },
                     singleLine = true,
                     shape = MaterialTheme.shapes.small,
                     keyboardOptions = KeyboardOptions(capitalization = KeyboardCapitalization.Words),
@@ -124,8 +126,8 @@ fun StoreDialog(
                 OutlinedTextField(
                     value = location,
                     onValueChange = { location = it },
-                    label = { Text("Location (optional)") },
-                    placeholder = { Text("e.g. Main St") },
+                    label = { Text(tr(R.string.s_location_optional)) },
+                    placeholder = { Text(tr(R.string.s_e_g_main_st)) },
                     singleLine = true,
                     shape = MaterialTheme.shapes.small,
                     keyboardOptions = KeyboardOptions(capitalization = KeyboardCapitalization.Words),
@@ -135,9 +137,9 @@ fun StoreDialog(
                         Icon(Icons.Default.PinDrop, null, tint = Amni.palette.brass)
                         Spacer(Modifier.width(10.dp))
                         Column(Modifier.weight(1f)) {
-                            Text("Pin to where I am", style = MaterialTheme.typography.bodyLarge)
+                            Text(tr(R.string.s_pin_to_where_i_am), style = MaterialTheme.typography.bodyLarge)
                             Text(
-                                "Puts the store on the price map. Stays on this phone.",
+                                tr(R.string.s_puts_the_store_on_the),
                                 style = MaterialTheme.typography.bodySmall,
                                 color = MaterialTheme.colorScheme.onSurfaceVariant,
                             )
@@ -151,9 +153,9 @@ fun StoreDialog(
         },
         confirmButton = {
             TextButton(enabled = name.isNotBlank(), onClick = { onConfirm(name.trim(), location.trim().ifEmpty { null }, pinHere) }) {
-                Text("Save")
+                Text(tr(R.string.s_save))
             }
         },
-        dismissButton = { TextButton(onClick = onDismiss) { Text("Cancel") } },
+        dismissButton = { TextButton(onClick = onDismiss) { Text(tr(R.string.s_cancel)) } },
     )
 }
