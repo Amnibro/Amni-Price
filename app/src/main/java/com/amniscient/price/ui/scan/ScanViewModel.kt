@@ -66,6 +66,7 @@ class ScanViewModel(
 
     private val busy = AtomicBoolean(false)
     @Volatile private var lastFrameAt = 0L
+    private var lastPrice: Long? = null
 
     /** Live analysis of camera frames in shelf mode, throttled so the UI stays smooth. */
     val analyzer = ImageAnalysis.Analyzer { proxy ->
@@ -98,20 +99,28 @@ class ScanViewModel(
     }
 
     private suspend fun onFrame(result: VisionResult) {
-        val tag = PriceParser.parse(result.lines)
+        val focus = result.focused()
+        val tag = PriceParser.parse(focus.lines)
         val previous = _state.value.live
-        val newBarcode = result.barcode?.takeIf { it != previous.barcode }
-
-        // Results flicker frame to frame: keep the last good value for each field.
-        var live = if (newBarcode != null) ShelfDraft(barcode = newBarcode) else previous
+        val newBarcode = focus.barcode?.takeIf { it != previous.barcode }
+        val price = tag.priceCents?.takeIf { it == lastPrice || previous.priceCents == null || it == previous.priceCents }
+        lastPrice = tag.priceCents
+        val newTag = newBarcode == null && price != null && previous.priceCents != null && price != previous.priceCents
+        val sameCode = focus.barcode != null && focus.barcode == previous.barcode
+        var live = when {
+            newBarcode != null -> if (previous.barcode.isBlank()) previous.copy(barcode = newBarcode, productId = null) else ShelfDraft(barcode = newBarcode)
+            newTag -> if (sameCode) ShelfDraft(barcode = previous.barcode, productId = previous.productId) else ShelfDraft()
+            else -> previous
+        }
         live = live.copy(
-            productName = tag.productName ?: live.productName,
-            priceCents = tag.priceCents ?: live.priceCents,
+            productName = tag.productName?.takeIf { price != null || live.productName.isBlank() } ?: live.productName,
+            priceCents = price ?: live.priceCents,
             sizeText = tag.sizeText ?: live.sizeText,
             onSale = live.onSale || tag.onSale,
         )
-        var known = if (newBarcode != null) null else _state.value.known
-        var lastHere = if (newBarcode != null) null else _state.value.lastHere
+        val drop = newBarcode != null || (newTag && !sameCode)
+        var known = if (drop) null else _state.value.known
+        var lastHere = if (drop) null else _state.value.lastHere
         if (newBarcode != null) {
             known = repository.summaryForBarcode(newBarcode)
             lastHere = known?.let { k -> currentStoreId.value?.let { repository.lastPriceAt(k.product.id, it) } }
@@ -123,7 +132,7 @@ class ScanViewModel(
                 productId = known.product.id,
             )
         }
-        val newDetection = newBarcode != null || (previous.priceCents == null && live.priceCents != null)
+        val newDetection = newBarcode != null || newTag || (previous.priceCents == null && live.priceCents != null)
         _state.update {
             it.copy(
                 live = live,
@@ -136,7 +145,7 @@ class ScanViewModel(
 
     fun setMode(mode: ScanMode) = _state.update { it.copy(mode = mode, message = null) }
 
-    fun clearLive() = _state.update { it.copy(live = ShelfDraft(), known = null, lastHere = null) }
+    fun clearLive() { lastPrice = null; _state.update { it.copy(live = ShelfDraft(), known = null, lastHere = null) } }
 
     fun selectStore(id: Long) {
         settings.setCurrentStore(id)

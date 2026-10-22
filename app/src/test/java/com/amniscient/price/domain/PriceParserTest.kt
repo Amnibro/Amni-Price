@@ -49,4 +49,16 @@ class PriceParserTest {
     @Test fun emptyInput() {
         assertEquals(null, PriceParser.parse(emptyList()).priceCents)
     }
+    @Test fun readsSuperscriptCentsWithoutDecimalPoint() {
+        assertEquals(399L, PriceParser.parse(listOf(line("ORG BABY SPINACH", 30), line("$399", 120), line("UNIT PRICE $0.80 per oz", 14))).priceCents)
+        assertEquals(1299L, PriceParser.parse(listOf(line("1299", 120), line("Item 041190", 12))).priceCents)
+        assertEquals(249L, PriceParser.parse(listOf(line("2 49", 120))).priceCents)
+    }
+    @Test fun joinsCentsReadAsTheirOwnLine() {
+        val r = PriceParser.parse(listOf(OcrLine("CHOBANI GREEK YOGURT", 0, 0, 400, 30), OcrLine("$1", 200, 60, 260, 180), OcrLine("79", 265, 62, 300, 110), OcrLine("UNIT PRICE 33.6¢ per oz", 0, 200, 300, 214)))
+        assertEquals(179L, r.priceCents); assertEquals("CHOBANI GREEK YOGURT", r.productName)
+    }
+    @Test fun storeChromeIsNotTheProductName() {
+        assertEquals("CABOT SHARP CHEDDAR 8 OZ", PriceParser.parse(listOf(line("EVERYDAY LOW PRICE", 40), line("CABOT SHARP CHEDDAR 8 OZ", 30), line("$4.49", 120))).productName)
+    }
 }

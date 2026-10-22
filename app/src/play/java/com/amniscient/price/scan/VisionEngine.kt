@@ -5,6 +5,7 @@ import androidx.annotation.OptIn
 import androidx.camera.core.ExperimentalGetImage
 import androidx.camera.core.ImageProxy
 import com.amniscient.price.domain.OcrLine
+import com.amniscient.price.domain.TagFocus
 import com.google.mlkit.vision.barcode.BarcodeScannerOptions
 import com.google.mlkit.vision.barcode.BarcodeScanning
 import com.google.mlkit.vision.barcode.common.Barcode
@@ -24,7 +25,8 @@ class VisionEngine(private val context: Context) {
     private suspend fun analyze(image: InputImage, withBarcode: Boolean): VisionResult = coroutineScope {
         val text = async { textRecognizer.process(image).await() }
         val codes = if (withBarcode) async { barcodeScanner.process(image).await() } else null
-        VisionResult(text.await().toLines(), codes?.await()?.firstNotNullOfOrNull { it.rawValue?.takeIf(String::isNotBlank) })
+        val (w, h) = if (image.rotationDegrees % 180 == 0) image.width to image.height else image.height to image.width
+        VisionResult(text.await().toLines(), codes?.await()?.mapNotNull { b -> b.rawValue?.takeIf(String::isNotBlank)?.let { v -> TagFocus.Code(v, b.boundingBox?.exactCenterX() ?: w / 2f, b.boundingBox?.exactCenterY() ?: h / 2f) } } ?: emptyList(), w, h)
     }
     private suspend fun read(image: InputImage): List<OcrLine> = textRecognizer.process(image).await().toLines()
     @OptIn(ExperimentalGetImage::class)

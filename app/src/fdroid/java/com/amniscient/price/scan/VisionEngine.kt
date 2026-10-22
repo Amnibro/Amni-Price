@@ -7,6 +7,7 @@ import android.net.Uri
 import androidx.camera.core.ImageProxy
 import androidx.exifinterface.media.ExifInterface
 import com.amniscient.price.domain.OcrLine
+import com.amniscient.price.domain.TagFocus
 import com.google.zxing.BarcodeFormat
 import com.google.zxing.BinaryBitmap
 import com.google.zxing.DecodeHintType
@@ -25,7 +26,7 @@ class VisionEngine(private val context: Context) {
     private val lock = Mutex()
     private val tess by lazy { TessBaseAPI().apply { check(init(dataDir().absolutePath, "eng", TessBaseAPI.OEM_LSTM_ONLY)) { "OCR model missing" }; setVariable("user_defined_dpi", "300") } }
     private val hints = mapOf(DecodeHintType.POSSIBLE_FORMATS to listOf(BarcodeFormat.UPC_A, BarcodeFormat.UPC_E, BarcodeFormat.EAN_13, BarcodeFormat.EAN_8, BarcodeFormat.CODE_128), DecodeHintType.TRY_HARDER to true)
-    suspend fun analyze(proxy: ImageProxy, withBarcode: Boolean = true): VisionResult = coroutineScope { val b = proxy.upright(LIVE_MAX); val code = async(Dispatchers.Default) { if (withBarcode) barcode(b) else null }; VisionResult(ocr(b, TessBaseAPI.PageSegMode.PSM_SPARSE_TEXT), code.await()) }
+    suspend fun analyze(proxy: ImageProxy, withBarcode: Boolean = true): VisionResult = coroutineScope { val b = proxy.upright(LIVE_MAX); val code = async(Dispatchers.Default) { if (withBarcode) barcode(b) else null }; VisionResult(ocr(b, TessBaseAPI.PageSegMode.PSM_SPARSE_TEXT), listOfNotNull(code.await()), b.width, b.height) }
     suspend fun readText(proxy: ImageProxy): List<OcrLine> = ocr(binarize(proxy.upright(STILL_MAX).fit(STILL_MAX)), TessBaseAPI.PageSegMode.PSM_SINGLE_BLOCK)
     suspend fun readText(uri: Uri): List<OcrLine> = ocr(binarize(withContext(Dispatchers.IO) { decode(uri) }), TessBaseAPI.PageSegMode.PSM_SINGLE_BLOCK)
     private suspend fun binarize(src: Bitmap, offset: Double = 0.08): Bitmap = withContext(Dispatchers.Default) {
@@ -55,10 +56,10 @@ class VisionEngine(private val context: Context) {
             out
         }
     }
-    private fun barcode(bitmap: Bitmap): String? = runCatching {
+    private fun barcode(bitmap: Bitmap): TagFocus.Code? = runCatching {
         val px = IntArray(bitmap.width * bitmap.height).also { bitmap.getPixels(it, 0, bitmap.width, 0, 0, bitmap.width, bitmap.height) }
-        MultiFormatReader().decode(BinaryBitmap(HybridBinarizer(RGBLuminanceSource(bitmap.width, bitmap.height, px))), hints).text
-    }.getOrNull()?.takeIf(String::isNotBlank)
+        MultiFormatReader().decode(BinaryBitmap(HybridBinarizer(RGBLuminanceSource(bitmap.width, bitmap.height, px))), hints).let { r -> val pts = r.resultPoints.orEmpty().filterNotNull(); TagFocus.Code(r.text, pts.map { it.x }.average().toFloat().takeIf { pts.isNotEmpty() } ?: bitmap.width / 2f, pts.map { it.y }.average().toFloat().takeIf { pts.isNotEmpty() } ?: bitmap.height / 2f) }
+    }.getOrNull()?.takeIf { it.value.isNotBlank() }
     private fun ImageProxy.upright(max: Int): Bitmap = toBitmap().rotated(imageInfo.rotationDegrees.toFloat()).scaled(max)
     private fun decode(uri: Uri): Bitmap {
         val deg = context.contentResolver.openInputStream(uri)?.use { ExifInterface(it).rotationDegrees } ?: 0

@@ -29,6 +29,11 @@ object PriceParser {
     private val decimal = Regex("""(?<![\d.,])\$?\s*(\d{1,4})\s?[.,]\s?(\d{2})(?![\d%])""")
     private val dollarSpaceCents = Regex("""\$\s*(\d{1,3})\s+(\d{2})(?!\d)""")
     private val dollarWhole = Regex("""\$\s*(\d{1,4})(?![\d.,])""")
+    private val bareSpaced = Regex("""^\s*(\d{1,2})\s+(\d{2})\s*$""")
+    private val bareRun = Regex("""^\s*(\d{3,4})\s*$""")
+    private val splitDollars = Regex("""^\s*\$?\s*(\d{1,2})\s*$""")
+    private val splitCents = Regex("""^\s*(\d{2})\s*[¢c]?\s*$""", opts)
+    private val nameNoise = Regex("""\b(price|everyday|rewards?|you pay|with card|limit|guiding stars?|each|ea|per|retail|aisle|shelf)\b""", opts)
     private val cents = Regex("""(?<![\d.])(\d{1,2})\s*[¢c](?![a-z])""", opts)
     private val unitPriceHint = Regex(
         """(\bper\b|/\s*(oz|lb|kg|g|ml|l|ct|each|ea|100\s?g|100\s?ml|fl\s?oz|qt|gal)\b|unit\s*price)""",
@@ -38,8 +43,9 @@ object PriceParser {
     private val noiseHint = Regex("""\b(sku|upc|plu|item\s*#|reg(ular)?\s*price|was)\b""", opts)
     private val barcodeStripes = Regex("""^[IlL1|!iNMHVWUJ\[\]]{6,}$""")
 
-    fun parse(lines: List<OcrLine>): ShelfTagResult {
-        if (lines.isEmpty()) return ShelfTagResult(null, null, null, false)
+    fun parse(raw: List<OcrLine>): ShelfTagResult {
+        if (raw.isEmpty()) return ShelfTagResult(null, null, null, false)
+        val lines = joinSuperscript(raw)
         val maxHeight = lines.maxOf { it.height }.coerceAtLeast(1).toFloat()
         val candidates = lines.flatMap { line ->
             val relHeight = if (line.height > 0) line.height / maxHeight else 0.5f
@@ -56,7 +62,8 @@ object PriceParser {
         }.filter { it.cents in 1..999_999 }
 
         val best = candidates.filterNot { it.isUnitPrice }.maxByOrNull { it.score }
-        val name = guessName(lines, best?.line)
+        val anchor = best?.let { b -> lines.firstOrNull { it.text == b.line } }
+        val name = guessName(anchor?.let { a -> lines.filter { a.height <= 0 || kotlin.math.abs(it.centerY - a.centerY) <= a.height * 3.5f } } ?: lines, best?.line)
         val size = lines.firstNotNullOfOrNull { UnitParser.parse(it.text)?.sourceText }
         val onSale = lines.any { saleHint.containsMatchIn(it.text) }
         return ShelfTagResult(best?.cents, name, size, onSale, candidates.sortedByDescending { it.score })
@@ -96,10 +103,12 @@ object PriceParser {
         }
         dollarWhole.findAll(text).forEach { m ->
             if (free(m.range)) {
-                out += (m.groupValues[1].toLong() * 100) to 0.15f
+                out += (if (m.groupValues[1].length >= 3) m.groupValues[1].toLong() else m.groupValues[1].toLong() * 100) to 0.15f
                 consumed += m.range
             }
         }
+        bareSpaced.find(text)?.takeIf { free(it.range) }?.let { m -> out += (m.groupValues[1].toLong() * 100 + m.groupValues[2].toLong()) to 0.2f; consumed += m.range }
+        bareRun.find(text)?.takeIf { free(it.range) }?.let { m -> out += m.groupValues[1].toLong() to -0.05f; consumed += m.range }
         cents.findAll(text).forEach { m ->
             if (free(m.range)) {
                 out += m.groupValues[1].toLong() to 0.1f
@@ -109,11 +118,22 @@ object PriceParser {
         return out
     }
 
+    internal fun joinSuperscript(lines: List<OcrLine>): List<OcrLine> {
+        val used = mutableSetOf<OcrLine>()
+        val joined = lines.mapNotNull { a ->
+            if (a in used) return@mapNotNull null
+            val d = splitDollars.find(a.text)?.groupValues?.get(1) ?: return@mapNotNull a
+            val b = lines.filter { it !== a && it !in used && a.height > 0 && it.height in 1 until (a.height * 0.8f).toInt().coerceAtLeast(2) && it.left >= a.right - a.height / 3 && it.left - a.right <= a.height && it.centerY in (a.top - a.height * 0.3f)..(a.centerY + a.height * 0.15f) }.firstNotNullOfOrNull { c -> splitCents.find(c.text)?.let { c to it.groupValues[1] } } ?: return@mapNotNull a
+            used += b.first
+            OcrLine("$$d.${b.second}", a.left, a.top, b.first.right, a.bottom)
+        }
+        return joined.filter { it !in used }
+    }
     private fun guessName(lines: List<OcrLine>, priceLine: String?): String? {
         return lines
             .asSequence()
             .filter { it.text != priceLine }
-            .filterNot { unitPriceHint.containsMatchIn(it.text) || noiseHint.containsMatchIn(it.text) }
+            .filterNot { unitPriceHint.containsMatchIn(it.text) || noiseHint.containsMatchIn(it.text) || nameNoise.containsMatchIn(it.text) }
             .filterNot { saleHint.matches(it.text.trim()) || barcodeStripes.matches(it.text.trim()) }
             .map { it to it.text.count(Char::isLetter) }
             .filter { (line, letters) -> letters >= 3 && letters.toFloat() / line.text.length > 0.5f }

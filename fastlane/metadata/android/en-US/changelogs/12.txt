@@ -1,0 +1,4 @@
+• Shelf tag scanning reads the tag in the middle of the screen, not its neighbors, so prices and names stop mixing between tags
+• Moving to a new tag starts fresh, so a product is never saved with the next tag's price
+• Prices with small raised cents ($3⁹⁹) read as $3.99, not $399
+• Small shelf-tag barcodes read more reliably, and UPC and EAN versions of the same code match

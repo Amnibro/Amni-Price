@@ -4,6 +4,7 @@ import androidx.room.withTransaction
 import com.amniscient.price.domain.Categorizer
 import com.amniscient.price.domain.Category
 import com.amniscient.price.domain.Csv
+import com.amniscient.price.domain.TagFocus
 import com.amniscient.price.domain.GeoStoreValue
 import com.amniscient.price.domain.LatLng
 import com.amniscient.price.domain.LatestPrice
@@ -263,7 +264,7 @@ class PriceRepository(private val db: AppDatabase) {
     suspend fun findByBarcode(barcode: String): ProductEntity? = products.findByBarcode(barcode)
 
     suspend fun summaryForBarcode(barcode: String): ProductSummary? {
-        val product = products.findByBarcode(barcode) ?: return null
+        val product = TagFocus.gtins(barcode).firstNotNullOfOrNull { products.findByBarcode(it) } ?: return null
         return productSummaries.first().firstOrNull { it.product.id == product.id }
     }
 
